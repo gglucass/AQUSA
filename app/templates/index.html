@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <div class='container'>
+    <h2>Projects</h2>
+    <ol>
+    {% for project in projects %}
+      <li><a href="/project/{{ project.id }}"> {{ project.name }} </a></li>
+    {% endfor %}
+    </ol>
+  </div>
+{% endblock %}

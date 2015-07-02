@@ -1,0 +1,96 @@
+
+<div class='error-blocks'>
+  <div class='left-error-block'>
+    <div class='error-block'>
+      <div class='error-circle severe-errors'>
+        <div class='height-fix'></div>
+        <div class='error-circle-content'>{{ severe_errors|length }}</div>
+      </div>
+      <a href='?severity=high' class='error-text'>severe errors</a>
+    </div>
+
+    <div class='error-block'>
+      <div class='error-circle medium-errors'>
+        <div class='height-fix'></div>
+        <div class='error-circle-content'>{{ medium_errors|length }}</div>
+      </div>
+      <a href='?severity=medium' class='error-text'>medium errors</a>
+    </div>
+  </div>
+
+  <div class='right-error-block'>
+    <div class='error-block'>
+      <div class='error-circle false-positives'>
+        <div class='height-fix'></div>
+        <div class='error-circle-content'>{{ false_positives|length }}</div>
+      </div>
+      <a href='?false_positive=True' class='error-text'>false positives</a>
+    </div>
+
+    <div class='error-block'>
+      <div class='error-circle perfect-stories'>
+        <div class='height-fix'></div>
+        <div class='error-circle-content'>{{ perfect_stories|length }}</div> 
+      </div>
+      <a href='?perfect_stories=True' class='error-text'>perfect stories</a>
+    </div>
+  </div>
+</div>
+
+{% if request.args.get('perfect_stories') == 'True' %}
+  {% set stories = perfect_stories %}
+  <div class="story_report">
+    <ul class="story_report">
+      {% for story in stories %}
+        <li class='perfect-story'>
+          <h4 class='story-title'>{{ "#" + loop.index|string }}</h4>
+          <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
+        </li>
+
+      {% endfor %}
+    </ul>
+  </div>
+
+{% else %}
+  <div class="story_report">
+    <ul class="story_report">
+      {% for story in stories %}
+        {% set errors = story.errors.filter_by(false_positive=request.args.get('false_positive') or False) %}
+        {% if request.args.get('severity') is not none %}
+          {% set errors = errors.filter_by(severity=request.args.get('severity')) %}
+        {% endif %}
+        {% if errors.all()|length > 0 %}
+          <li class="story_errors">
+            <!-- <h4 class='story-title'>{{ "#" + loop.index|string }}</h4> -->
+            <h4 class='story-title'>{{ "#" + story.id|string }}</h4>
+            <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
+            {% for error in errors %}
+              <div class="error_box">
+                
+                <div class="severity-block {{ "severity-" + error.severity }}"></div>
+                <form class="ignore_form" action="{{project.id}}/error/{{ error.id }}" method=post>
+                    <input type=boolean name="false_positive" hidden=True value=True>
+                    <br/>
+                    <input type=submit value="ignore ->" class="ignore_button">
+                </form>
+                
+                <p class="error_title">
+                  {{ _(error.kind + '_' + error.subkind) }}
+                </p>
+                <p class="error_explanation">
+                {{ _(error.kind + '_' + error.subkind + '_explanation') }}
+                </p>
+                <p class="highlight">Suggestion: {{ error.highlight|safe }}</p>
+
+              </div>
+              
+              
+            {% endfor %}
+          </li>
+
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+
+{% endif %}

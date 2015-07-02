@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+
+<div class='error-blocks'>
+  <div class='left-error-block'>
+    <div class='error-block'>
+      <div class='error-circle total-errors'>
+        <div class='height-fix'></div>
+        <div class='error-circle-content'>{{ project_errors|length }}</div>
+      </div>
+      <a href='?' class='error-text'>total errors</a>
+    </div>
+  </div>
+  <div class='right-error-block'>
+    <div class='error-block'>
+      <a class='btn btn-default upload-us-button' href={{ url_for('upload_file', project_unique=project.id) }}>{{ 'Reupload stories' if stories|length > 0 else 'Upload stories' }}</a>
+    </div>
+  </div>
+</div>
+  
+  {% include "story_report.html" %}
+  
+</div>
+{% endblock %}
