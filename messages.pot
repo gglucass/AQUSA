@@ -18,12 +18,12 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 
 #: app/templates/story_report.html:14
-msgid "well_formed_no_comma_explanation"
-msgstr "This looks like a user story, but it's good practice to add comma's between the role, means and ends segments"
+msgid "well_formed_no_means_comma_explanation"
+msgstr "The user story is well-formed, but it's good practice to add a comma between the role and means segments"
 
 #: app/templates/story_report.html:15
-msgid "well_formed_ends_one_comma_explanation"
-msgstr "This looks like a user story, but it's good practice to also add a comma between means and ends segments"
+msgid "well_formed_no_ends_comma_explanation"
+msgstr "This user story is well-formed, but it's good practice to add a comma between the means and ends segments"
 
 #: app/templates/story_report.html:6
 msgid "well_formed_no_means_explanation"
@@ -34,12 +34,12 @@ msgid "well_formed_no_role_explanation"
 msgstr "It looks like you didn't include a role. Are you sure this is a user story?"
 
 #: app/templates/story_report.html:14
-msgid "well_formed_no_comma"
-msgstr "No comma"
+msgid "well_formed_no_means_comma"
+msgstr "No comma between role and means"
 
 #: app/templates/story_report.html:15
-msgid "well_formed_ends_one_comma"
-msgstr "An ends, but one comma"
+msgid "well_formed_no_ends_comma"
+msgstr "No comma between means and ends"
 
 #: app/templates/story_report.html:6
 msgid "well_formed_no_means"

@@ -186,7 +186,7 @@ class Error(db.Model):
 
 ROLE_INDICATORS = ["As an ", "As a ", "As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to "]
-ENDS_INDICATORS = ["So that ", "In order to "]
+ENDS_INDICATORS = ["So that ", "In order to ", "So "]
 CONJUNCTIONS = [' and ', '&', '+', ' or ']
 PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?']
 BRACKETS = [['(', ')'], ['[', ']'], ['{', '}'], ['⟨', '⟩']]
@@ -251,8 +251,8 @@ class Analyzer:
       if eval(error_type['rule']):
         Error.create_unless_duplicate(eval(error_type['highlight']), kind, error_type['subkind'], error_type['severity'], story)
 
-  def inject_text(text):
-    return "<span class='highlight-text'>%s</span>" % text
+  def inject_text(text, severity='medium'):
+    return "<span class='highlight-text severity-" + severity + "'>%s</span>" % text
 
   def atomic_rule(chunk):
     sentences_invalid = []
@@ -281,12 +281,6 @@ class Analyzer:
     for index, word in indices:
       highlighted_text = highlighted_text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + highlighted_text[index+len(word):]
     return highlighted_text
-
-  # def punctuation_rule(story):
-  #   return any(re.compile('(\%s .)' % x).search(story.text.lower()) for x in PUNCTUATION)
-
-  # def brackets_rule(story):
-  #   return any(re.compile('(\%s.)' % x).search(story.text.lower()) for x in BRACKETS)
 
   def well_formed_content_rule(story_part, kind, tags):
     result = Analyzer.content_chunk(story_part, kind)
@@ -341,8 +335,8 @@ class WellFormedAnalyzer:
   def well_formed(story):
     WellFormedAnalyzer.means(story)
     WellFormedAnalyzer.role(story)
-    WellFormedAnalyzer.no_comma(story)
-    WellFormedAnalyzer.ends_one_comma(story)
+    WellFormedAnalyzer.means_comma(story)
+    WellFormedAnalyzer.ends_comma(story)
     return story
 
   def means(story):
@@ -355,23 +349,19 @@ class WellFormedAnalyzer:
       Error.create_unless_duplicate('Add a role', 'well_formed', 'no_role', 'high', story )
     return story
 
-  def no_comma(story):
-    if story.text.count(',') == 0 and story.role and story.means:
-      highlight = story.role + Analyzer.inject_text(',') + ' ' + story.means
-      Error.create_unless_duplicate(highlight, 'well_formed', 'no_comma', 'medium', story )
+  def means_comma(story):
+    if story.role is not None and story.means is not None:
+      if story.role.count(',') == 0:
+        highlight = story.role + Analyzer.inject_text(',') + ' ' + story.means
+        Error.create_unless_duplicate(highlight, 'well_formed', 'no_means_comma', 'medium', story )
     return story
 
-  def ends_one_comma(story):
-    if story.text.count(',') == 1 and story.means and story.role and story.ends:
-      highlight = story.role + (' ') + story.means + Analyzer.inject_text(',') + ' ' + story.ends
-      Error.create_unless_duplicate(highlight, 'well_formed', 'ends_one_comma', 'medium', story )
+  def ends_comma(story):
+    if story.means is not None and story.ends is not None:
+      if story.means.count(',') == 0:
+        highlight = story.means + Analyzer.inject_text(',') + ' ' + story.ends
+        Error.create_unless_duplicate(highlight, 'well_formed', 'no_ends_comma', 'medium', story )
     return story
-
-  def means_but_no_indicator(story):
-    print('')
-
-  def role_but_no_indicator(story):
-    print('')
 
 class MinimalAnalyzer:
   def minimal(story):
@@ -457,7 +447,7 @@ class StoryChunker:
       NPs_after_role = StoryChunker.keep_if_NP(sentence)
       if NPs_after_role:
         role = StoryChunker.detect_indicator_phrase(story.text, 'role')
-        story.role = story.text[indicators['role']:(len(role[1]) + len(NPs_after_role))]
+        story.role = story.text[indicators['role']:(len(role[1]) + len(NPs_after_role))].strip()
     if indicators['ends']: story.ends = story.text[indicators['ends']:None].strip()
     story.save()
     return story
@@ -470,6 +460,7 @@ class StoryChunker:
           return_string.append(leaf[0][0])
         else:
           break
+      elif leaf == (',', ','): return_string.append(',')
     return ' '.join(return_string)
 
   def means_tags_present(story, string):
