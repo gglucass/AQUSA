@@ -386,8 +386,8 @@ class MinimalAnalyzer:
 
   def brackets(story):
     if any(re.compile('(\%s' % x[0] + '.*\%s(\W|\Z))' % x[1]).search(story.text.lower()) for x in BRACKETS):
-      highlight = MinimalAnalyzer.brackets_highlight(story, 'medium')
-      Error.create_unless_duplicate(highlight, 'minimal', 'brackets', 'medium', story )
+      highlight = MinimalAnalyzer.brackets_highlight(story, 'high')
+      Error.create_unless_duplicate(highlight, 'minimal', 'brackets', 'high', story )
     return story.errors.all()
 
   def brackets_highlight(story, severity):
