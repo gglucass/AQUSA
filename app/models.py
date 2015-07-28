@@ -184,8 +184,8 @@ class Error(db.Model):
       db.session.merge(error)
       return error
 
-ROLE_INDICATORS = ["As an ", "As a ", "As "]
-MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to "]
+ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
+MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
 ENDS_INDICATORS = ["So that ", "In order to ", "So "]
 CONJUNCTIONS = [' and ', '&', '+', ' or ']
 PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?', '*']
@@ -428,13 +428,15 @@ class StoryChunker:
     result = False
     detected_indicators = ['']
     for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
-      if indicator_phrase.lower() in text.lower(): 
+      if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
         result = True
-        detected_indicators.append(indicator_phrase)
+        detected_indicators.append(indicator_phrase.replace('^', ''))
     return (result, max(detected_indicators, key=len))
 
   def chunk_on_indicators(story):
     indicators = StoryChunker.detect_indicators(story)
+    if indicators['means'] is not None and indicators['ends'] is not None:
+      indicators = StoryChunker.correct_erroneous_indicators(story, indicators)
     if indicators['role'] is not None and indicators['means'] is not None:
       story.role = story.text[indicators['role']:indicators['means']].strip()
       story.means = story.text[indicators['means']:indicators['ends']].strip()
@@ -464,3 +466,12 @@ class StoryChunker:
       story.means = string
       story.save
     return story
+
+  def correct_erroneous_indicators(story, indicators):
+    # means is larger than ends
+    if indicators['means'] > indicators['ends']:
+      new_means = StoryChunker.detect_indicator_phrase(story.text[:indicators['ends']], 'means')
+      #replication of #427 - refactor?
+      if new_means[0]:
+        indicators['means'] = story.text.lower().index(new_means[1].lower())
+    return indicators
