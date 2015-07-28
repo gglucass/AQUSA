@@ -188,7 +188,7 @@ ROLE_INDICATORS = ["As an ", "As a ", "As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to "]
 ENDS_INDICATORS = ["So that ", "In order to ", "So "]
 CONJUNCTIONS = [' and ', '&', '+', ' or ']
-PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?']
+PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?', '*']
 BRACKETS = [['(', ')'], ['[', ']'], ['{', '}'], ['⟨', '⟩']]
 ERROR_KINDS = { 'well_formed_content': [
                   { 'subkind': 'means', 'rule': 'Analyzer.well_formed_content_rule(story.means, "means", ["means"])', 'severity':'medium', 'highlight':'str("Make sure the means includes a verb and a noun. Our analysis shows the means currently includes: ") + Analyzer.well_formed_content_highlight(story.means, "means")'},
@@ -375,7 +375,7 @@ class MinimalAnalyzer:
     highlighted_text = story.text
     indices = []
     for word in PUNCTUATION:
-      if word in story.text.lower(): indices += [ [story.text.index(word), word] ]
+      if re.search('(\%s .)' % word, story.text.lower()): indices += [ [story.text.index(word), word] ]
     first_punct = min(indices)
     highlighted_text = highlighted_text[:first_punct[0]] + "<span class='highlight-text severity-" + severity + "'>" + highlighted_text[first_punct[0]:] + "</span>"
     return highlighted_text
