@@ -349,14 +349,14 @@ class WellFormedAnalyzer:
     if story.role is not None and story.means is not None:
       if story.role.count(',') == 0:
         highlight = story.role + Analyzer.inject_text(',') + ' ' + story.means
-        Error.create_unless_duplicate(highlight, 'well_formed', 'no_means_comma', 'medium', story )
+        Error.create_unless_duplicate(highlight, 'well_formed', 'no_means_comma', 'minor', story )
     return story
 
   def ends_comma(story):
     if story.means is not None and story.ends is not None:
       if story.means.count(',') == 0:
         highlight = story.means + Analyzer.inject_text(',') + ' ' + story.ends
-        Error.create_unless_duplicate(highlight, 'well_formed', 'no_ends_comma', 'medium', story )
+        Error.create_unless_duplicate(highlight, 'well_formed', 'no_ends_comma', 'minor', story )
     return story
 
 class MinimalAnalyzer:
