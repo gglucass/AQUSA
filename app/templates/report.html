@@ -2,7 +2,11 @@
 
 {% block content %}
 <div class="container">
-
+<center><h1> {{ title }} - {{ stories|length }} </h1></center>
+<center>
+  <a class='btn btn-default upload-us-button' href={{ url_for('upload_file', project_unique=project.id) }}>{{ 'Reupload stories' if stories|length > 0 else 'Upload stories' }}</a>
+</center>
+<br>
 <div class='error-blocks'>
   <div class='left-error-block'>
     <div class='error-block'>
@@ -15,7 +19,11 @@
   </div>
   <div class='right-error-block'>
     <div class='error-block'>
-      <a class='btn btn-default upload-us-button' href={{ url_for('upload_file', project_unique=project.id) }}>{{ 'Reupload stories' if stories|length > 0 else 'Upload stories' }}</a>
+      <div class='error-circle minor-errors'>
+        <div class='height-fix'></div>
+        <div class='error-circle-content'>{{ minor_errors|length }}</div>
+      </div>
+      <a href='?severity=minor' class='error-text'>minor issues</a>
     </div>
   </div>
 </div>

@@ -48,12 +48,13 @@ def project(project_unique):
   project_errors = project.errors.filter_by(false_positive=False).all()
   severe_errors = project.errors.filter_by(severity="high", false_positive=False).all()
   medium_errors = project.errors.filter_by(severity="medium", false_positive=False).all()
+  minor_errors = project.errors.filter_by(severity="minor", false_positive=False).all()
   false_positives = project.errors.filter_by(false_positive=True).all()
   perfect_stories = project.stories.filter(Story.errors == None).all()
   stories = project.stories.order_by('id').all()
 
   return render_template('report.html', title=project.name, project=project, 
-    stories=stories, severe_errors=severe_errors, medium_errors=medium_errors, 
+    stories=stories, severe_errors=severe_errors, medium_errors=medium_errors, minor_errors=minor_errors, 
     false_positives=false_positives, perfect_stories=perfect_stories, project_errors=project_errors)
 
 @app.route('/project/<string:project_unique>/error/<int:error_id>', methods=['POST'])

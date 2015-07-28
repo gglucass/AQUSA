@@ -83,6 +83,10 @@ p.error_explanation {
   background-color: #FFD670;
 }
 
+.severity-minor {
+  background-color: #ddd;
+}
+
 .story-title {
   display: inline;
 }
@@ -126,6 +130,10 @@ p.error_explanation {
 
 .medium-errors {
   background: #FFD670;
+}
+
+.minor-errors {
+  background: #ddd;
 }
 
 .false-positives {
