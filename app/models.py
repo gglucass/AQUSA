@@ -201,10 +201,6 @@ ERROR_KINDS = { 'well_formed_content': [
                 'unique': [
                   { 'subkind':'identical', 'rule':"Analyzer.identical_rule(story, cascade)", 'severity':'high', 'highlight':'str("Remove all duplicate user stories")' }
                 ],
-                'minimal': [
-                  { 'subkind':'punctuation', 'rule':"Analyzer.punctuation_rule(story)", 'severity':'high', 'highlight':'Analyzer.highlight_text(story, PUNCTUATION)'},
-                  { 'subkind':'brackets', 'rule':"Analyzer.brackets_rule(story)", 'severity':'medium', 'highlight':'Analyzer.highlight_text(story, BRACKETS)'}
-                ],
                 'uniform': [
                   { 'subkind':'uniform', 'rule':"Analyzer.uniform_rule(story)", 'severity':'medium', 'highlight':'"Use the most common template: %s" % story.project.format'}
                 ],
@@ -227,10 +223,6 @@ class Analyzer:
 
   def unique(story, cascade):
     Analyzer.generate_errors('unique', story, cascade=cascade)
-    return story
-
-  def minimal(story):
-    Analyzer.generate_errors('minimal', story)
     return story
 
   def uniform(story):
