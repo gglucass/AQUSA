@@ -196,7 +196,7 @@ ERROR_KINDS = { 'well_formed_content': [
                 ],
 
                 'atomic': [
-                  { 'subkind':'conjunctions', 'rule':"Analyzer.atomic_rule(getattr(story,chunk))", 'severity':'high', 'highlight':"Analyzer.highlight_text(story, CONJUNCTIONS, 'high')"}
+                  { 'subkind':'conjunctions', 'rule':"Analyzer.atomic_rule(getattr(story,chunk), chunk)", 'severity':'high', 'highlight':"Analyzer.highlight_text(story, CONJUNCTIONS, 'high')"}
                 ],
                 'unique': [
                   { 'subkind':'identical', 'rule':"Analyzer.identical_rule(story, cascade)", 'severity':'high', 'highlight':'str("Remove all duplicate user stories")' }
@@ -246,13 +246,17 @@ class Analyzer:
   def inject_text(text, severity='medium'):
     return "<span class='highlight-text severity-" + severity + "'>%s</span>" % text
 
-  def atomic_rule(chunk):
+  def atomic_rule(chunk, kind):
     sentences_invalid = []
     if chunk: 
       for x in CONJUNCTIONS:
         if x in chunk.lower():
-          for means in chunk.split(x):
-            sentences_invalid.append(Analyzer.well_formed_content_rule(means, 'means', ['MEANS']))
+          if kind == 'means':
+            for means in chunk.split(x):
+              sentences_invalid.append(Analyzer.well_formed_content_rule(means, 'means', ['MEANS']))
+          if kind == 'role':
+            for role in chunk.split(x):
+              sentences_invalid.append(Analyzer.well_formed_content_rule(role, "role", ["NP"]))
     return sentences_invalid.count(False) > 1
 
   def identical_rule(story, cascade):
