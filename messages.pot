@@ -71,7 +71,7 @@ msgstr "Not minimal"
 
 #: app/templates/story_report.html:6
 msgid "minimal_punctuation_explanation"
-msgstr "User stories should not contain "
+msgstr "User stories should not include additional information aside from core user story text. Move this to the description."
 
 #: app/templates/story_report.html:6
 msgid "minimal_brackets"
