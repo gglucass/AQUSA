@@ -24,6 +24,11 @@
         <div class='error-circle-content'>{{ minor_errors|length }}</div>
       </div>
       <a href='?severity=minor' class='error-text'>minor issues</a>
+      {% if minor_errors|length > 0 %}
+        <form class="ignore_form" action="{{project.id}}/correct_minor_issues" method=post>
+          <input type=submit value="fix all" class="btn">
+        </form>
+      {% endif %}
     </div>
   </div>
 </div>

@@ -68,7 +68,7 @@ class Story(db.Model):
     return self
 
   def re_analyze(self):
-    for error in Error.query.filter_by(story=self, false_positive=False):
+    for error in Error.query.filter_by(story=self, false_positive=False).all():
       error.delete()
     self.analyze()
     return self
@@ -139,6 +139,7 @@ class Project(db.Model):
   def analyze(self):
     self.get_common_format()
     for story in self.stories.all():
+      story.re_chunk()
       story.re_analyze()
     return self
 
@@ -183,6 +184,11 @@ class Error(db.Model):
       db.session.commit()
       db.session.merge(error)
       return error
+
+  def correct_minor_issue(self):
+    story = self.story
+    CorrectError.correct_minor_issue(self)
+    return story
 
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
@@ -314,7 +320,7 @@ class Analyzer:
     if text:
       indicator_phrase = []
       for indicator in eval(indicator_type.upper() + '_INDICATORS'):
-        if indicator.lower() in text.lower(): indicator_phrase += [indicator]
+        if re.compile('(%s)' % indicator.lower()).search(text.lower()): indicator_phrase += [indicator.replace('^', '')]
       return max(indicator_phrase, key=len) if indicator_phrase else None
     else:
       return text
@@ -396,8 +402,9 @@ class MinimalAnalyzer:
       string_length = 0
       for string in strings:
         result = re.compile(match_string).search(string.lower())
-        span = tuple(map(operator.add, result.span(), (string_length, string_length)))
-        matches += [ [span, result.group()] ]
+        if result:
+          span = tuple(map(operator.add, result.span(), (string_length, string_length)))
+          matches += [ [span, result.group()] ]
         string_length += len(string)
     matches.sort(reverse=True)
     for index, word in matches:
@@ -441,10 +448,11 @@ class StoryChunker:
       story.role = story.text[indicators['role']:indicators['means']].strip()
       story.means = story.text[indicators['means']:indicators['ends']].strip()
     elif indicators['role'] is not None and indicators['means'] is None:
-      sentence = Analyzer.content_chunk(story.text, 'role')
+      role = StoryChunker.detect_indicator_phrase(story.text, 'role')
+      new_text = story.text.replace(role[1], '')
+      sentence = Analyzer.content_chunk(new_text, 'role')
       NPs_after_role = StoryChunker.keep_if_NP(sentence)
       if NPs_after_role:
-        role = StoryChunker.detect_indicator_phrase(story.text, 'role')
         story.role = story.text[indicators['role']:(len(role[1]) + len(NPs_after_role))].strip()
     if indicators['ends']: story.ends = story.text[indicators['ends']:None].strip()
     story.save()
@@ -454,7 +462,9 @@ class StoryChunker:
     return_string = []
     for leaf in parsed_tree:
       if type(leaf) is not tuple:
-        if leaf.label() == 'NP': 
+        if leaf[0][0] == 'I':
+          break
+        elif leaf.label() == 'NP': 
           return_string.append(leaf[0][0])
         else:
           break
@@ -474,4 +484,27 @@ class StoryChunker:
       #replication of #427 - refactor?
       if new_means[0]:
         indicators['means'] = story.text.lower().index(new_means[1].lower())
+      else:
+        indicators['means'] = None
     return indicators
+
+
+class CorrectError:
+  def correct_minor_issue(error):
+    story = error.story
+    eval('CorrectError.correct_%s(error)' % error.subkind)
+    return story
+
+  def correct_no_means_comma(error):
+    story = error.story
+    story.text = story.role + ', ' + story.means 
+    if story.ends: story.text = story.text + ' ' + story.ends
+    story.save()
+    return story
+
+  def correct_no_ends_comma(error):
+    story = error.story
+    story.text = story.means + ', ' + story.ends
+    if story.role: story.text = story.role + ' ' + story.text
+    story.save()
+    return story

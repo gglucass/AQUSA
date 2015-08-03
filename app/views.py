@@ -61,8 +61,13 @@ def project(project_unique):
 def update_error(project_unique, error_id):
   project = Project.query.get(project_unique)
   error = project.errors.filter_by(id=error_id).first()
-  error.false_positive = request.form['false_positive']
-  error.save()
+  if request.form.get('false_positive', None) == 'True':
+    error.false_positive = request.form['false_positive']
+    error.save()
+  if request.form.get('correct_minor_issue', None) == 'True':
+    error.correct_minor_issue()
+    error.story.re_chunk()
+    error.story.re_analyze()
   return redirect(url_for('project', project_unique=project.id))
 
 @app.route('/project/<string:project_unique>/stories/update_story', methods=['POST'])
@@ -74,6 +79,14 @@ def update_story(project_unique):
   story.re_chunk()
   story.re_analyze()
   return story.text
+
+@app.route('/project/<string:project_unique>/correct_minor_issues', methods=['POST'])
+def correct_minor_issues(project_unique):
+  project = Project.query.get(project_unique)
+  for error in project.errors.filter_by(severity='minor').all():
+    error.correct_minor_issue()
+  project.analyze()
+  return redirect(url_for('project', project_unique=project.id))
 
 
 # @app.route('/backend/api/v1.0/stories', methods=['POST'])

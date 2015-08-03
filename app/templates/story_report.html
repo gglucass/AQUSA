@@ -69,6 +69,12 @@
                 
                 <div class="severity-block {{ "severity-" + error.severity }}"></div>
                 <form class="ignore_form" action="{{project.id}}/error/{{ error.id }}" method=post>
+                    <input type=boolean name="correct_minor_issue" hidden=True value=True>
+                    <br/>
+                    <input type=submit value="fix" class="ignore_button">
+                </form>
+                
+                <form class="ignore_form" action="{{project.id}}/error/{{ error.id }}" method=post>
                     <input type=boolean name="false_positive" hidden=True value=True>
                     <br/>
                     <input type=submit value="ignore ->" class="ignore_button">
