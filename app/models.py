@@ -83,6 +83,33 @@ class Story(db.Model):
         false_positive.delete()
     return self
 
+class Integration(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
+  kind = db.Column(db.String(120), nullable=False)
+  api_token = db.Column(db.String(250), nullable=False)
+  project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+  integration_project_id = db.Column(db.String(250), nullable=False)
+
+  def __repr__(self):
+    return '<Integration: %r, kind=%r, project=%r>' % (self.id, self.kind, self.project.name)
+
+  def create(kind, api_token, project, integration_project_id):
+    integration = Integration(kind=kind, api_token=api_token, project_id=project.id, integration_project_id=integration_project_id)
+    db.session.add(integration)
+    db.session.commit()
+    db.session.merge(integration)
+    return integration
+
+  def delete(self):
+    db.session.delete(self)
+    db.session.commit() 
+
+  def save(self):
+    db.session.add(self)
+    db.session.commit()
+    db.session.merge(self)
+    return self
+
 
 class Project(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -90,6 +117,7 @@ class Project(db.Model):
   format = db.Column(db.Text, nullable=True, default="As a,I'm able to,So that")
   stories = db.relationship('Story', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
   errors = db.relationship('Error', backref='project', lazy='dynamic')
+  integration = db.relationship('Integration', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
 
   def __repr__(self):
     return '<Project: %r, name=%s>' % (self.id, self.name)
@@ -508,3 +536,40 @@ class CorrectError:
     if story.role: story.text = story.role + ' ' + story.text
     story.save()
     return story
+
+class Webhook:
+  def parse(json_data):
+    project = Webhook.get_project(json_data)
+    for change in json_data['changes']:
+      eval('Webhook.' + change['change_type'] + '(change, project)')
+    return "OK"
+
+  def create(change, project):
+    values = change['new_values']
+    story = Story.create(values['name'], project.id, analyze=True)
+    if story:
+      return "OK"
+    else:
+      return 400
+
+  def update(change, project):
+    original_values = change['original_values']
+    story = Story.query.filter_by(project_id=project.id, text=original_values['name']).first()
+    new_values = change['new_values']
+    story.text = new_values['name']
+    if story.save():
+      story.re_analyze()
+      return "OK"
+    else:
+      return 400
+
+  def delete(change, project):
+    story = Story.query.filter_by(project_id=project.id, text=change['name']).first()
+    story.delete()
+    return "OK"
+
+
+  def get_project(json_data):
+    project = json_data['project']
+    project = Integration.query.filter_by(integration_project_id=str(project['id'])).first().project
+    return project

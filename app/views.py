@@ -2,8 +2,9 @@ from flask import jsonify, abort, session, render_template, request, flash, redi
 from werkzeug import secure_filename
 import os
 from app import app, babel
-from .models import Story, Project, Error
+from .models import Story, Project, Error, Integration, Webhook
 from config import LANGUAGES
+import json
 
 @app.route('/')
 def index():
@@ -88,7 +89,25 @@ def correct_minor_issues(project_unique):
   project.analyze()
   return redirect(url_for('project', project_unique=project.id))
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+  data = json.loads(request.data.decode())
+  result = Webhook.parse(data)
+  return result
 
+@app.route('/submit_project', methods=['GET', 'POST'])
+def gp_submit_project():
+  if request.method == 'POST':
+    kind = request.form['kind']
+    integration_project_id = request.form['project_id']
+    project = Project.create(request.form['name'])
+    api_token = os.environ['GP_API_TOKEN']
+    integration = Integration.create(kind, api_token, project, integration_project_id)
+    if integration:
+      return 'OK'
+    else:
+      return 400
+  return render_template('submit_project.html', title='Submit Project')  
 # @app.route('/backend/api/v1.0/stories', methods=['POST'])
 # def create_story():
 #   if not request.json or not 'text' in request.json or not 'project' in request.json:
