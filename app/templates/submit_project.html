@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <div class='container'>
+    <h1>Submit a new project</h1>
+    <form action="submit_project" method=post>
+      <span> Name</span> <br>
+      <input type=text name=name>
+      <br>
+      <span> Pivotal ID</span><br>
+      <input type=text name=project_id>
+      <input type=text name=kind value=Pivotal hidden=hidden>
+      <br/>
+      <input type=submit value=Submit>
+    </form>
+  </div>
+{% endblock %}

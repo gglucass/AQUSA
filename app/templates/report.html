@@ -6,6 +6,8 @@
 <center><h1> {{ title }} - {{ stories|length }} </h1></center>
 <center>
   <a class='btn btn-default upload-us-button' href={{ url_for('upload_file', project_unique=project.id) }}>{{ 'Reupload stories' if stories|length > 0 else 'Upload stories' }}</a>
+  <a class='btn btn-default upload-us-button' href={{ url_for('delete_project', project_unique=project.id) }}>Delete project</a>
+  <a class='btn btn-default upload-us-button' href={{ url_for('re_analyze_project', project_unique=project.id) }}>Re-analyze project</a>
 </center>
 <br>
 <div class='error-blocks'>

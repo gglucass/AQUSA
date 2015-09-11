@@ -8,11 +8,17 @@ import re
 import nltk
 import pandas
 import operator
+import pycurl
+import json
+import threading
+from flask.ext.babel import Babel, gettext
+from io import BytesIO
 from collections import Counter
 # Classes: Story, Error, Project  
 
 class Story(db.Model):
   id = db.Column(db.Integer, primary_key=True)
+  external_id = db.Column(db.String(120))
   text = db.Column(db.Text)
   role = db.Column(db.Text)
   means = db.Column(db.Text)
@@ -28,8 +34,8 @@ class Story(db.Model):
     del class_dict['_sa_instance_state']
     return class_dict
 
-  def create(text, project_id, analyze=False):
-    story = Story(text=text, project_id=project_id)
+  def create(text, project_id, external_id, analyze=False):
+    story = Story(text=text, project_id=project_id, external_id=external_id)
     db.session.add(story)
     db.session.commit()
     db.session.merge(story)
@@ -69,6 +75,8 @@ class Story(db.Model):
 
   def re_analyze(self):
     for error in Error.query.filter_by(story=self, false_positive=False).all():
+      for comment in error.comments.all():
+        threading.Thread(target=comment.post_delete_to_pivotal()).start()
       error.delete()
     self.analyze()
     return self
@@ -114,7 +122,7 @@ class Integration(db.Model):
 class Project(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   name = db.Column(db.String(120), index=True, nullable=False)
-  format = db.Column(db.Text, nullable=True, default="As a,I'm able to,So that")
+  format = db.Column(db.Text, nullable=True, default="As a,I want to,So that")
   stories = db.relationship('Story', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
   errors = db.relationship('Error', backref='project', lazy='dynamic')
   integration = db.relationship('Integration', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
@@ -178,6 +186,7 @@ class Error(db.Model):
   subkind = db.Column(db.String(120), nullable=False)
   severity = db.Column(db.String(120), nullable=False)
   false_positive = db.Column(db.Boolean, default=False, nullable=False)
+  comments = db.relationship('Comment', backref='error', lazy='dynamic', cascade='save-update, merge, delete')
   story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=False)
   project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
 
@@ -211,6 +220,7 @@ class Error(db.Model):
       db.session.add(error)
       db.session.commit()
       db.session.merge(error)
+      threading.Thread(target=Comment.create(error, story)).start()
       return error
 
   def correct_minor_issue(self):
@@ -321,17 +331,18 @@ class Analyzer:
     return well_formed
 
   def uniform_rule(story):
-    project_format = story.project.format.split(',')
-    chunks = []
-    for chunk in ['role', 'means', 'ends']:
-      chunks += [Analyzer.extract_indicator_phrases(getattr(story,chunk), chunk)]
-    chunks = list(filter(None, chunks))
-    chunks = [c.strip() for c in chunks]
     result = False
-    if len(chunks) == 1: result = True
-    for x in range(0,len(chunks)):
-      if nltk.metrics.distance.edit_distance(chunks[x].lower(), project_format[x].lower()) > 3:
-        result = True 
+    if story.project.stories.count() > 3:
+      project_format = story.project.format.split(',')
+      chunks = []
+      for chunk in ['role', 'means', 'ends']:
+        chunks += [Analyzer.extract_indicator_phrases(getattr(story,chunk), chunk)]
+      chunks = list(filter(None, chunks))
+      chunks = [c.strip() for c in chunks]
+      if len(chunks) == 1: result = True
+      for x in range(0,len(chunks)):
+        if nltk.metrics.distance.edit_distance(chunks[x].lower(), project_format[x].lower()) > 3:
+          result = True 
     return result
 
   def well_formed_content_highlight(story_part, kind):
@@ -546,7 +557,7 @@ class Webhook:
 
   def create(change, project):
     values = change['new_values']
-    story = Story.create(values['name'], project.id, analyze=True)
+    story = Story.create(values['name'], project.id, values['id'], analyze=True)
     if story:
       return "OK"
     else:
@@ -554,22 +565,76 @@ class Webhook:
 
   def update(change, project):
     original_values = change['original_values']
-    story = Story.query.filter_by(project_id=project.id, text=original_values['name']).first()
+    story = Story.query.filter_by(project_id=project.id, external_id=str(change['id'])).first()
     new_values = change['new_values']
     story.text = new_values['name']
     if story.save():
+      story.re_chunk()
       story.re_analyze()
       return "OK"
     else:
       return 400
 
   def delete(change, project):
-    story = Story.query.filter_by(project_id=project.id, text=change['name']).first()
+    story = Story.query.filter_by(project_id=project.id, external_id=str(change['id'])).first()
     story.delete()
     return "OK"
-
 
   def get_project(json_data):
     project = json_data['project']
     project = Integration.query.filter_by(integration_project_id=str(project['id'])).first().project
     return project
+
+class Comment(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
+  text = db.Column(db.Text, nullable=False)
+  error_id = db.Column(db.Integer, db.ForeignKey('error.id'), nullable=False)
+  external_id = db.Column(db.String(120), nullable=False)
+
+  def delete(self):
+    integration = self.error.project.integration.first()
+    story = self.error.story
+    threading.Thread(target=self.post_delete_to_pivotal()).start()
+    db.session.delete(self)
+    db.session.commit()
+
+  def post_delete_to_pivotal(self):
+    integration = self.error.project.integration.first()
+    story = self.error.story
+    token = integration.api_token
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, "https://www.pivotaltracker.com/services/v5/projects/%s/stories/%s/comments/%s" % (integration.integration_project_id, story.external_id, self.external_id))
+    c.setopt(pycurl.HTTPHEADER, ['X-TrackerToken: %s' % token, 'Content-Type: application/json'])
+    c.setopt(pycurl.CUSTOMREQUEST,'DELETE')
+    c.perform()
+    c.close()
+    return "OK"
+  
+  def create(error, story):
+    project = story.project
+    integration = project.integration.first()
+    text = '__' + gettext(error.kind + '_' + error.subkind) + '__' + '\n' + gettext(error.kind + '_' + error.subkind + '_explanation') + '\n' + '__Suggestion__: ' +error.highlight
+    response = Comment.post_create_to_pivotal(text, integration, story)
+    if response:
+      comment = Comment(text=text, external_id=response['id'], error_id=error.id)
+      db.session.add(comment)
+      db.session.commit()
+      db.session.merge(comment)
+      return comment
+    else:
+      return 400
+
+  def post_create_to_pivotal(text, integration, story):
+    token = integration.api_token
+    data = json.dumps({"text":text})
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, "https://www.pivotaltracker.com/services/v5/projects/%s/stories/%s/comments" % (integration.integration_project_id, story.external_id))
+    c.setopt(pycurl.HTTPHEADER, ['X-TrackerToken: %s' % token, 'Content-Type: application/json'])
+    c.setopt(pycurl.POST,1)
+    c.setopt(pycurl.POSTFIELDS, data)
+    c.setopt(c.WRITEDATA, buffer)
+    c.perform()
+    c.close()
+    body = buffer.getvalue()
+    return json.loads(body.decode())

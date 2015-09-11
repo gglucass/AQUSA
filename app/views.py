@@ -104,10 +104,26 @@ def gp_submit_project():
     api_token = os.environ['GP_API_TOKEN']
     integration = Integration.create(kind, api_token, project, integration_project_id)
     if integration:
-      return 'OK'
+      return redirect(url_for('project', project_unique=project.id))
     else:
       return 400
   return render_template('submit_project.html', title='Submit Project')  
+
+@app.route('/project/<string:project_unique>/delete_project', methods=['GET'])
+def delete_project(project_unique):
+  project = Project.query.get(project_unique)
+  project.delete()
+  return redirect(url_for('index'))
+
+
+@app.route('/project/<string:project_unique>/re_analyze', methods=['GET'])
+def re_analyze_project(project_unique):
+  project = Project.query.get(project_unique)
+  project.analyze()
+  return redirect(url_for('project', project_unique=project_unique))
+
+
+
 # @app.route('/backend/api/v1.0/stories', methods=['POST'])
 # def create_story():
 #   if not request.json or not 'text' in request.json or not 'project' in request.json:
