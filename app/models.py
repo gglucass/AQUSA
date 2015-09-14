@@ -14,9 +14,15 @@ import threading
 from flask.ext.babel import Babel, gettext
 from io import BytesIO
 from collections import Counter
+import sqlalchemy as sa
+from sqlalchemy_continuum import make_versioned
+make_versioned(user_cls=None)
+
 # Classes: Story, Error, Project  
 
 class Story(db.Model):
+  __versioned__ = {}
+  __tablename__ = 'story'
   id = db.Column(db.Integer, primary_key=True)
   external_id = db.Column(db.String(120))
   text = db.Column(db.Text)
@@ -92,6 +98,8 @@ class Story(db.Model):
     return self
 
 class Integration(db.Model):
+  __versioned__ = {}
+  __tablename__ = 'integration'
   id = db.Column(db.Integer, primary_key=True)
   kind = db.Column(db.String(120), nullable=False)
   api_token = db.Column(db.String(250), nullable=False)
@@ -120,6 +128,8 @@ class Integration(db.Model):
 
 
 class Project(db.Model):
+  __versioned__ = {}
+  __tablename__ = 'project'
   id = db.Column(db.Integer, primary_key=True)
   name = db.Column(db.String(120), index=True, nullable=False)
   format = db.Column(db.Text, nullable=True, default="As a,I want to,So that")
@@ -180,6 +190,8 @@ class Project(db.Model):
     return self
 
 class Error(db.Model):
+  __versioned__ = {}
+  __tablename__ = 'error'
   id = db.Column(db.Integer, primary_key=True)
   highlight = db.Column(db.Text, nullable=False)
   kind = db.Column(db.String(120), index=True,  nullable=False)
@@ -586,6 +598,8 @@ class Webhook:
     return project
 
 class Comment(db.Model):
+  __versioned__ = {}
+  __tablename__ = 'comment'
   id = db.Column(db.Integer, primary_key=True)
   text = db.Column(db.Text, nullable=False)
   error_id = db.Column(db.Integer, db.ForeignKey('error.id'), nullable=False)
@@ -614,13 +628,14 @@ class Comment(db.Model):
     project = story.project
     integration = project.integration.first()
     text = '__' + gettext(error.kind + '_' + error.subkind) + '__' + '\n' + gettext(error.kind + '_' + error.subkind + '_explanation') + '\n' + '__Suggestion__: ' +error.highlight
-    response = Comment.post_create_to_pivotal(text, integration, story)
-    if response:
-      comment = Comment(text=text, external_id=response['id'], error_id=error.id)
-      db.session.add(comment)
-      db.session.commit()
-      db.session.merge(comment)
-      return comment
+    if integration:
+      response = Comment.post_create_to_pivotal(text, integration, story)
+      if response:
+        comment = Comment(text=text, external_id=response['id'], error_id=error.id)
+        db.session.add(comment)
+        db.session.commit()
+        db.session.merge(comment)
+        return comment
     else:
       return 400
 
@@ -638,3 +653,5 @@ class Comment(db.Model):
     c.close()
     body = buffer.getvalue()
     return json.loads(body.decode())
+
+sa.orm.configure_mappers()
