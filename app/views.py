@@ -63,7 +63,7 @@ def update_error(project_unique, error_id):
   project = Project.query.get(project_unique)
   error = project.errors.filter_by(id=error_id).first()
   if request.form['false_positive'] == 'True':
-    error.false_positive = request.form['false_positive']
+    error.false_positive = True
     error.save()
   if request.form.get['correct_minor_issue'] == 'True':
     error.correct_minor_issue()
