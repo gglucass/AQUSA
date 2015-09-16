@@ -55,9 +55,11 @@
   <div class="story_report">
     <ul class="story_report">
       {% for story in stories %}
-        {% set false_positive = request.args.get('false_positive') %}
-        {{ false_positive }}
-        {% set errors = story.errors.filter_by(false_positive=false_positive) %}
+        {% if request.args.get('false_positive') == 'True' %}
+          {% set errors = story.errors.filter_by(false_positive=True) %}  
+        {% else %}
+          {% set errors = story.errors.filter_by(false_positive=False) %}
+        {% endif %}
         {% if request.args.get('severity') is not none %}
           {% set errors = errors.filter_by(severity=request.args.get('severity')) %}
         {% endif %}
