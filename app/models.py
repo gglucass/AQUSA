@@ -82,7 +82,7 @@ class Story(db.Model):
   def re_analyze(self):
     for error in Error.query.filter_by(story=self, false_positive=False).all():
       for comment in error.comments.all():
-        threading.Thread(target=comment.post_delete_to_pivotal()).start()
+        threading.Thread(target=comment.post_delete_to_pivotal, args=()).start()
       error.delete()
     self.analyze()
     return self
@@ -232,7 +232,8 @@ class Error(db.Model):
       db.session.add(error)
       db.session.commit()
       db.session.merge(error)
-      threading.Thread(target=Comment.create(error, story)).start()
+      db.session.refresh(error)
+      threading.Thread(target=Comment.create, args=(error, story)).start()
       return error
 
   def correct_minor_issue(self):
@@ -608,7 +609,7 @@ class Comment(db.Model):
   def delete(self):
     integration = self.error.project.integration.first()
     story = self.error.story
-    threading.Thread(target=self.post_delete_to_pivotal()).start()
+    threading.Thread(target=self.post_delete_to_pivotal, args=()).start()
     db.session.delete(self)
     db.session.commit()
 
