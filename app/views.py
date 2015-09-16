@@ -62,10 +62,10 @@ def project(project_unique):
 def update_error(project_unique, error_id):
   project = Project.query.get(project_unique)
   error = project.errors.filter_by(id=error_id).first()
-  if request.form.get('false_positive', None) == 'True':
+  if request.form['false_positive'] == 'True':
     error.false_positive = request.form['false_positive']
     error.save()
-  if request.form.get('correct_minor_issue', None) == 'True':
+  if request.form['correct_minor_issue'] == 'True':
     error.correct_minor_issue()
     error.story.re_chunk()
     error.story.re_analyze()
