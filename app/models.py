@@ -82,7 +82,7 @@ class Story(db.Model):
   def re_analyze(self):
     for error in Error.query.filter_by(story=self, false_positive=False).all():
       for comment in error.comments.all():
-        threading.Thread(target=comment.post_delete_to_pivotal, args=()).start()
+        threading.Thread(target=Comment.post_delete_to_pivotal, args=(comment.external_id, comment.error.story.external_id, comment.error.project.integration.first().integration_project_id)).start()
       error.delete()
     self.analyze()
     return self
@@ -613,12 +613,9 @@ class Comment(db.Model):
     db.session.delete(self)
     db.session.commit()
 
-  def post_delete_to_pivotal(self):
-    integration = self.error.project.integration.first()
-    story = self.error.story
-    token = integration.api_token
+  def post_delete_to_pivotal(comment_ext_id, story_ext_id, integration_project_id):
     c = pycurl.Curl()
-    c.setopt(pycurl.URL, "https://www.pivotaltracker.com/services/v5/projects/%s/stories/%s/comments/%s" % (integration.integration_project_id, story.external_id, self.external_id))
+    c.setopt(pycurl.URL, "https://www.pivotaltracker.com/services/v5/projects/%s/stories/%s/comments/%s" % (integration_project_id, story_ext_id, comment_ext_id))
     c.setopt(pycurl.HTTPHEADER, ['X-TrackerToken: %s' % token, 'Content-Type: application/json'])
     c.setopt(pycurl.CUSTOMREQUEST,'DELETE')
     c.perform()
