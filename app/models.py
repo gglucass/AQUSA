@@ -89,7 +89,7 @@ class Story(db.Model):
     return self
 
   def remove_duplicates_of_false_positives(self):
-    for false_positive in self.errors.filter_by(false_positive=True):
+    for false_positive in self.errors.filter_by(false_positive=True).all():
       duplicates = Error.query.filter_by(story=self, kind=false_positive.kind, subkind=false_positive.subkind, false_positive=False).all()
       if duplicates:
         for duplicate in duplicates:
