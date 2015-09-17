@@ -82,7 +82,8 @@ class Story(db.Model):
   def re_analyze(self):
     for error in Error.query.filter_by(story=self, false_positive=False).all():
       for comment in error.comments.all():
-        threading.Thread(target=Comment.post_delete_to_pivotal, args=(comment.external_id, comment.error.story.external_id, comment.error.project.integration.first().integration_project_id)).start()
+        integration = comment.error.project.integration.first()
+        threading.Thread(target=Comment.post_delete_to_pivotal, args=(comment.external_id, comment.error.story.external_id, integration.integration_project_id, integration.api_token)).start()
       error.delete()
     self.analyze()
     return self
@@ -613,7 +614,7 @@ class Comment(db.Model):
     db.session.delete(self)
     db.session.commit()
 
-  def post_delete_to_pivotal(comment_ext_id, story_ext_id, integration_project_id):
+  def post_delete_to_pivotal(comment_ext_id, story_ext_id, integration_project_id, token):
     c = pycurl.Curl()
     c.setopt(pycurl.URL, "https://www.pivotaltracker.com/services/v5/projects/%s/stories/%s/comments/%s" % (integration_project_id, story_ext_id, comment_ext_id))
     c.setopt(pycurl.HTTPHEADER, ['X-TrackerToken: %s' % token, 'Content-Type: application/json'])
@@ -629,7 +630,7 @@ class Comment(db.Model):
     if integration:
       response = Comment.post_create_to_pivotal(text, integration, story)
       if response:
-        comment = Comment(text=text, external_id=response['id'], error_id=error.id)
+        comment = Comment(text=text, external_id=response["id"], error_id=error.id)
         db.session.add(comment)
         db.session.commit()
         db.session.merge(comment)
