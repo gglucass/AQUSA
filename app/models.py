@@ -83,7 +83,8 @@ class Story(db.Model):
     for error in Error.query.filter_by(story=self, false_positive=False).all():
       for comment in error.comments.all():
         integration = comment.error.project.integration.first()
-        threading.Thread(target=Comment.post_delete_to_pivotal, args=(comment.external_id, comment.error.story.external_id, integration.integration_project_id, integration.api_token)).start()
+        # threading.Thread(target=Comment.post_delete_to_pivotal, args=(comment.external_id, comment.error.story.external_id, integration.integration_project_id, integration.api_token)).start()
+        Comment.post_delete_to_pivotal(comment.external_id, comment.error.story.external_id, integration.integration_project_id, integration.api_token)
       error.delete()
     self.analyze()
     return self
@@ -234,7 +235,8 @@ class Error(db.Model):
       db.session.commit()
       db.session.merge(error)
       db.session.refresh(error)
-      threading.Thread(target=Comment.create, args=(error, story)).start()
+      # threading.Thread(target=Comment.create, args=(error, story)).start()
+      Comment.create(error, story)
       return error
 
   def correct_minor_issue(self):
@@ -610,7 +612,8 @@ class Comment(db.Model):
   def delete(self):
     integration = self.error.project.integration.first()
     story = self.error.story
-    threading.Thread(target=self.post_delete_to_pivotal, args=()).start()
+    # threading.Thread(target=self.post_delete_to_pivotal, args=()).start()
+    self.post_delete_to_pivotal()
     db.session.delete(self)
     db.session.commit()
 
@@ -629,7 +632,7 @@ class Comment(db.Model):
     text = '__' + gettext(error.kind + '_' + error.subkind) + '__' + '\n' + gettext(error.kind + '_' + error.subkind + '_explanation') + '\n' + '__Suggestion__: ' +error.highlight
     if integration:
       response = Comment.post_create_to_pivotal(text, integration, story)
-      if response:
+      if response and "id" in response.keys():
         comment = Comment(text=text, external_id=response["id"], error_id=error.id)
         db.session.add(comment)
         db.session.commit()
