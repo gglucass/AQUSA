@@ -104,6 +104,7 @@ def gp_submit_project():
     api_token = os.environ['GP_API_TOKEN']
     integration = Integration.create(kind, api_token, project, integration_project_id)
     if integration:
+      project.sync_integration()
       return redirect(url_for('project', project_unique=project.id))
     else:
       return 400

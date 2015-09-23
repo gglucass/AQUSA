@@ -191,6 +191,24 @@ class Project(db.Model):
       story.re_analyze()
     return self
 
+  def sync_integration(self):
+    integration = self.integration.first()
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, "https://www.pivotaltracker.com/services/v5/projects/%s/stories" % integration.integration_project_id)
+    c.setopt(pycurl.HTTPHEADER, ['X-TrackerToken: %s' % integration.api_token, 'Content-Type: application/json'])
+    c.setopt(c.WRITEDATA, buffer)
+    c.perform()
+    c.close()
+    body = buffer.getvalue()
+    stories = json.loads(body.decode())
+    for story in stories:
+      Story.create(story["name"], self.id, story["id"])
+    self.analyze()
+    return self
+      
+
+
 class Error(db.Model):
   __versioned__ = {}
   __tablename__ = 'error'
