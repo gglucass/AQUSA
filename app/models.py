@@ -40,7 +40,7 @@ class Story(db.Model):
     del class_dict['_sa_instance_state']
     return class_dict
 
-  def create(text, project_id, external_id, analyze=False):
+  def create(text, project_id, external_id=None, analyze=False):
     story = Story(text=text, project_id=project_id, external_id=external_id)
     db.session.add(story)
     db.session.commit()
