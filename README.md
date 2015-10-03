@@ -7,7 +7,7 @@ This is an implementation of the AQUSA tool described in http://bit.ly/1IveMpa
   * Install Flask
   * Install libraries using `pip install -r requirements.txt`
   * Create a database
-  * run migrations: `./migrate.py db migrate` && `./migrate.py db upgrade`. You might need to delete the migrations in /migrations/versions first.
+  * run migrations: `./manage.py db migrate` && `./manage.py db upgrade`. You might need to delete the migrations in /migrations/versions first.
   * Install NLTK prerequisite 'Punkt Tokenizer' by running `nltk.download` in the Python interactive shell.
   * Run the translations with `./manage.py translate`. This will throw an error, but this is not a problem.
   * Test if the application works by running `nosetests`
