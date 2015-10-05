@@ -1,38 +1,38 @@
 
-<div class='error-blocks'>
-  <div class='left-error-block'>
-    <div class='error-block'>
-      <div class='error-circle severe-errors'>
+<div class='defect-blocks'>
+  <div class='left-defect-block'>
+    <div class='defect-block'>
+      <div class='defect-circle severe-defects'>
         <div class='height-fix'></div>
-        <div class='error-circle-content'>{{ severe_errors|length }}</div>
+        <div class='defect-circle-content'>{{ severe_defects|length }}</div>
       </div>
-      <a href='?severity=high' class='error-text'>errors</a>
+      <a href='?severity=high' class='defect-text'>defects</a>
     </div>
 
-    <div class='error-block'>
-      <div class='error-circle medium-errors'>
+    <div class='defect-block'>
+      <div class='defect-circle medium-defects'>
         <div class='height-fix'></div>
-        <div class='error-circle-content'>{{ medium_errors|length }}</div>
+        <div class='defect-circle-content'>{{ medium_defects|length }}</div>
       </div>
-      <a href='?severity=medium' class='error-text'>warnings</a>
+      <a href='?severity=medium' class='defect-text'>warnings</a>
     </div>
   </div>
 
-  <div class='right-error-block'>
-    <div class='error-block'>
-      <div class='error-circle false-positives'>
+  <div class='right-defect-block'>
+    <div class='defect-block'>
+      <div class='defect-circle false-positives'>
         <div class='height-fix'></div>
-        <div class='error-circle-content'>{{ false_positives|length }}</div>
+        <div class='defect-circle-content'>{{ false_positives|length }}</div>
       </div>
-      <a href='?false_positive=True' class='error-text'>false positives</a>
+      <a href='?false_positive=True' class='defect-text'>false positives</a>
     </div>
 
-    <div class='error-block'>
-      <div class='error-circle perfect-stories'>
+    <div class='defect-block'>
+      <div class='defect-circle perfect-stories'>
         <div class='height-fix'></div>
-        <div class='error-circle-content'>{{ perfect_stories|length }}</div> 
+        <div class='defect-circle-content'>{{ perfect_stories|length }}</div> 
       </div>
-      <a href='?perfect_stories=True' class='error-text'>perfect stories</a>
+      <a href='?perfect_stories=True' class='defect-text'>perfect stories</a>
     </div>
   </div>
 </div>
@@ -44,7 +44,7 @@
       {% for story in stories %}
         <li class='perfect-story'>
           <h4 class='story-title'>{{ "#" + loop.index|string }}</h4>
-          <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
+          <h4 class="edit story-title" id="{{story.id|string}}">{{ story.title }}</h4>
         </li>
 
       {% endfor %}
@@ -55,38 +55,38 @@
   <div class="story_report">
     <ul class="story_report">
       {% for story in stories %}
-        {% set errors = story.errors.filter_by(false_positive=request.args.get('false_positive') or False) %}
+        {% set defects = story.defects.filter_by(false_positive=request.args.get('false_positive') or False) %}
         {% if request.args.get('severity') is not none %}
-          {% set errors = errors.filter_by(severity=request.args.get('severity')) %}
+          {% set defects = defects.filter_by(severity=request.args.get('severity')) %}
         {% endif %}
-        {% if errors.all()|length > 0 %}
-          <li class="story_errors">
+        {% if defects.all()|length > 0 %}
+          <li class="story_defects">
             <!-- <h4 class='story-title'>{{ "#" + loop.index|string }}</h4> -->
             <h4 class='story-title'>{{ "#" + story.id|string }}</h4>
-            <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
-            {% for error in errors %}
-              <div class="error_box">
+            <h4 class="edit story-title" id="{{story.id|string}}">{{ story.title }}</h4>
+            {% for defect in defects %}
+              <div class="defect_box">
                 
-                <div class="severity-block {{ "severity-" + error.severity }}"></div>
-                <form class="ignore_form" action="{{project.id}}/error/{{ error.id }}" method=post>
+                <div class="severity-block {{ "severity-" + defect.severity }}"></div>
+                <form class="ignore_form" action="{{project.id}}/defect/{{ defect.id }}" method=post>
                     <input type=boolean name="correct_minor_issue" hidden=True value=True>
                     <br/>
                     <input type=submit value="fix" class="ignore_button">
                 </form>
                 
-                <form class="ignore_form" action="{{project.id}}/error/{{ error.id }}" method=post>
+                <form class="ignore_form" action="{{project.id}}/defect/{{ defect.id }}" method=post>
                     <input type=boolean name="false_positive" hidden=True value=True>
                     <br/>
                     <input type=submit value="ignore ->" class="ignore_button">
                 </form>
                 
-                <p class="error_title">
-                  {{ _(error.kind + '_' + error.subkind) }}
+                <p class="defect_title">
+                  {{ _(defect.kind + '_' + defect.subkind) }}
                 </p>
-                <p class="error_explanation">
-                {{ _(error.kind + '_' + error.subkind + '_explanation') }}
+                <p class="defect_explanation">
+                {{ _(defect.kind + '_' + defect.subkind + '_explanation') }}
                 </p>
-                <p class="highlight">Suggestion: {{ error.highlight|safe }}</p>
+                <p class="highlight">Suggestion: {{ defect.highlight|safe }}</p>
 
               </div>
               

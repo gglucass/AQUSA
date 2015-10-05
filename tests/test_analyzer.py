@@ -3,7 +3,7 @@ import unittest
 
 from config import basedir
 from app import app, db
-from app.models import Story, Project, Error
+from app.models import Story, Project, Defect
 
 class TestCase(unittest.TestCase):
   def setUp(self):
@@ -37,57 +37,57 @@ class WellFormednessTests(TestCase):
     p = create_project()
     s = Story.create(text="As a User, I'm able to add a user story, so that I document a requirement", project_id=p.id)
     s.analyze()
-    assert len(s.errors.all()) == 0
+    assert len(s.defects.all()) == 0
 
   def test_ends_one_comma(self):
     p = create_project()
     story = Story.create(text="As a User, I want to add a user story so that I document a requirement", project_id=p.id)
     p.analyze()
-    error = story.errors.all()[0]
-    assert error.kind == 'well_formed'
-    assert error.subkind == 'ends_one_comma'
-    assert error.severity == 'medium'
-    assert error.highlight == "As a User, I want to add a user story<span class='highlight-text'>,</span> so that I document a requirement"
+    defect = story.defects.all()[0]
+    assert defect.kind == 'well_formed'
+    assert defect.subkind == 'ends_one_comma'
+    assert defect.severity == 'medium'
+    assert defect.highlight == "As a User, I want to add a user story<span class='highlight-text'>,</span> so that I document a requirement"
 
   def test_no_comma(self):
     p = create_project()
     story = Story.create(text="As a User I want to add a user story so that I document a requirement", project_id=p.id)
     p.analyze()
-    error = story.errors.all()[0]
-    assert error.kind == 'well_formed'
-    assert error.subkind == 'no_comma'
-    assert error.severity == 'medium'
-    assert error.highlight == "As a User<span class='highlight-text'>,</span> I want to add a user story"
+    defect = story.defects.all()[0]
+    assert defect.kind == 'well_formed'
+    assert defect.subkind == 'no_comma'
+    assert defect.severity == 'medium'
+    assert defect.highlight == "As a User<span class='highlight-text'>,</span> I want to add a user story"
 
   def test_no_means(self):
     p = create_project()
     story = Story.create(text="As a User, I add a user story, so that I document a requirement", project_id=p.id)
     p.analyze()
-    error = story.errors.filter(Error.subkind=='no_means')[0]
-    assert error.kind == 'well_formed'
-    assert error.subkind == 'no_means'
-    assert error.severity == 'high'
-    assert error.highlight == "Add a means"
+    defect = story.defects.filter(Defect.subkind=='no_means')[0]
+    assert defect.kind == 'well_formed'
+    assert defect.subkind == 'no_means'
+    assert defect.severity == 'high'
+    assert defect.highlight == "Add a means"
 
   def test_no_role(self):
     p = create_project()
     story = Story.create(text="User wants to add a user story, so that I document a requirement", project_id=p.id)
     p.analyze()
-    error = story.errors.filter(Error.subkind=='no_role')[0]
-    assert error.kind == 'well_formed'
-    assert error.subkind == 'no_role'
-    assert error.severity == 'high'
-    assert error.highlight == "Add a role"
+    defect = story.defects.filter(Defect.subkind=='no_role')[0]
+    assert defect.kind == 'well_formed'
+    assert defect.subkind == 'no_role'
+    assert defect.severity == 'high'
+    assert defect.highlight == "Add a role"
 
 class AtomicTests(TestCase):
   def test_not_atomic(self):
     p = create_project()
     story = Story.create(text="As a User, I want to add a user story, so that I document a requirement and sell the system", project_id=p.id)
     p.analyze()
-    error = story.errors.filter(Error.subkind=='conjunctions')[0]
-    assert error.kind == 'atomic'
-    assert error.subkind == 'conjunctions'
-    assert error.severity == 'high'
+    defect = story.defects.filter(Defect.subkind=='conjunctions')[0]
+    assert defect.kind == 'atomic'
+    assert defect.subkind == 'conjunctions'
+    assert defect.severity == 'high'
 
 class UniqueTests(TestCase):
   def test_identical(self):
@@ -95,11 +95,11 @@ class UniqueTests(TestCase):
     story = Story.create(text="As a User, I want to add a user story, so that I document a requirement and sell the system", project_id=p.id)
     story2 = Story.create(text="As a User, I want to add a user story, so that I document a requirement and sell the system", project_id=p.id)
     p.analyze()
-    error1 = story.errors.filter(Error.subkind=='identical')[0]
-    error2 = story2.errors.filter(Error.subkind=='identical')[0]
-    assert error1.kind == error2.kind == 'unique'
-    assert error1.subkind == error2.subkind == 'identical'
-    assert error1.severity == error2.severity == 'high'
+    defect1 = story.defects.filter(Defect.subkind=='identical')[0]
+    defect2 = story2.defects.filter(Defect.subkind=='identical')[0]
+    assert defect1.kind == defect2.kind == 'unique'
+    assert defect1.subkind == defect2.subkind == 'identical'
+    assert defect1.severity == defect2.severity == 'high'
 
 
 class MinimalTests(TestCase):
@@ -107,20 +107,20 @@ class MinimalTests(TestCase):
     p = create_project()
     story = Story.create(text="As a User, I want to add a user story, so that I document a requirement and sell the system. This is extra info", project_id=p.id)
     p.analyze()
-    error = story.errors.filter(Error.subkind=='punctuation')[0]
-    assert error.kind == 'minimal'
-    assert error.subkind == 'punctuation'
-    assert error.severity == 'high'
+    defect = story.defects.filter(Defect.subkind=='punctuation')[0]
+    assert defect.kind == 'minimal'
+    assert defect.subkind == 'punctuation'
+    assert defect.severity == 'high'
 
 
   def test_brackets(self):
     p = create_project()
     story = Story.create(text="As a User, I want to add a user story, so that I document a requirement and sell the system (for money)", project_id=p.id)
     p.analyze()
-    error = story.errors.filter(Error.subkind=='brackets')[0]
-    assert error.kind == 'minimal'
-    assert error.subkind == 'brackets'
-    assert error.severity == 'medium'
+    defect = story.defects.filter(Defect.subkind=='brackets')[0]
+    assert defect.kind == 'minimal'
+    assert defect.subkind == 'brackets'
+    assert defect.severity == 'medium'
 
 class UniformTests(TestCase):
   def test_uniformity(self):
@@ -129,9 +129,9 @@ class UniformTests(TestCase):
     Story.create(text="As a User, I want to add a user story, so that I document another requirement", project_id=p.id)
     story = Story.create(text="As a User, I am able to add a user story, so that I register a requirement", project_id=p.id)
     p.analyze()
-    error = story.errors.filter(Error.subkind=='uniform')[0]
-    assert error.kind == 'uniform'
-    assert error.severity == 'medium'
+    defect = story.defects.filter(Defect.subkind=='uniform')[0]
+    assert defect.kind == 'uniform'
+    assert defect.severity == 'medium'
 
 
 def create_project():

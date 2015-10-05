@@ -8,24 +8,24 @@
   <a class='btn btn-default upload-us-button' href={{ url_for('upload_file', project_unique=project.id) }}>{{ 'Reupload stories' if stories|length > 0 else 'Upload stories' }}</a>
 </center>
 <br>
-<div class='error-blocks'>
-  <div class='left-error-block'>
-    <div class='error-block'>
-      <div class='error-circle total-errors'>
+<div class='defect-blocks'>
+  <div class='left-defect-block'>
+    <div class='defect-block'>
+      <div class='defect-circle total-defects'>
         <div class='height-fix'></div>
-        <div class='error-circle-content'>{{ project_errors|length }}</div>
+        <div class='defect-circle-content'>{{ project_defects|length }}</div>
       </div>
-      <a href='?' class='error-text'>total issues</a>
+      <a href='?' class='defect-text'>total issues</a>
     </div>
   </div>
-  <div class='right-error-block'>
-    <div class='error-block'>
-      <div class='error-circle minor-errors'>
+  <div class='right-defect-block'>
+    <div class='defect-block'>
+      <div class='defect-circle minor-defects'>
         <div class='height-fix'></div>
-        <div class='error-circle-content'>{{ minor_errors|length }}</div>
+        <div class='defect-circle-content'>{{ minor_defects|length }}</div>
       </div>
-      <a href='?severity=minor' class='error-text'>minor issues</a>
-      {% if minor_errors|length > 0 %}
+      <a href='?severity=minor' class='defect-text'>minor issues</a>
+      {% if minor_defects|length > 0 %}
         <form class="ignore_form" action="{{project.id}}/correct_minor_issues" method=post>
           <input type=submit value="fix all" class="btn btn-default fix-all-btn">
         </form>
