@@ -93,7 +93,7 @@ def correct_minor_issues(project_unique):
 def analyze_project(project_unique):
   project = Projects.query.get(project_unique)
   project.analyze()
-  return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
+  return jsonify({'success': True}), 200
 
 @app.route('/project/<string:project_unique>/stories/<string:story_unique>/analyze', methods=['GET'])
 def analyze_story(project_unique, story_unique):
@@ -101,7 +101,7 @@ def analyze_story(project_unique, story_unique):
   story = project.stories.filter_by(id=story_unique).first()
   story.re_chunk()
   story.analyze()
-  return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
+  return jsonify({'success': True}), 200
 
 
 # @app.route('/backend/api/v1.0/stories', methods=['POST'])
