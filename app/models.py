@@ -197,8 +197,7 @@ class Defects(db.Model):
       db.session.add(defect)
       db.session.commit()
       db.session.merge(defect)
-      t = threading.Thread(target=Defects.send_comment, args=(os.environ['FRONTEND_URL'], str(defect.id)))
-      t.start()
+      Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
       return defect
 
   def send_comment(url, defect_id):
