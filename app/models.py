@@ -257,7 +257,8 @@ class Analyzer:
     indicator_phrases = {'role': False, 'means': False, 'ends': False}
     for key in indicator_phrases:
       for indicator_phrase in eval(key.upper() + '_INDICATORS'):
-        if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
+        if text:
+          if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
     return indicator_phrases
 
   def generate_defects(kind, story, **kwargs):
@@ -338,16 +339,18 @@ class Analyzer:
     if text:
       indicator_phrase = []
       for indicator in eval(indicator_type.upper() + '_INDICATORS'):
-        if re.compile('(%s)' % indicator.lower()).search(text.lower()): indicator_phrase += [indicator.replace('^', '')]
+        if text:
+          if re.compile('(%s)' % indicator.lower()).search(text.lower()): indicator_phrase += [indicator.replace('^', '')]
       return max(indicator_phrase, key=len) if indicator_phrase else None
     else:
       return text
 
   def strip_indicators_pos(text, pos_text, indicator_type):
     for indicator in eval(indicator_type.upper() + '_INDICATORS'):
-      if indicator.lower().strip() in text.lower():
-        indicator_words = nltk.word_tokenize(indicator)
-        pos_text = [x for x in pos_text if x[0] not in indicator_words]
+      if text:
+        if indicator.lower().strip() in text.lower():
+          indicator_words = nltk.word_tokenize(indicator)
+          pos_text = [x for x in pos_text if x[0] not in indicator_words]
     return pos_text
 
 
@@ -453,9 +456,10 @@ class StoryChunker:
     result = False
     detected_indicators = ['']
     for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
-      if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
-        result = True
-        detected_indicators.append(indicator_phrase.replace('^', ''))
+      if text:
+        if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
+          result = True
+          detected_indicators.append(indicator_phrase.replace('^', ''))
     return (result, max(detected_indicators, key=len))
 
   def chunk_on_indicators(story):
