@@ -71,24 +71,24 @@ class Stories(db.Model):
     Analyzer.unique(self, True)
     MinimalAnalyzer.minimal(self)
     Analyzer.uniform(self)
-    self.remove_duplicates_of_false_positives()
+    # self.remove_duplicates_of_false_positives()
     return self
 
   def re_analyze(self):
-    for defect in Defects.query.filter_by(story=self, false_positive=False).all():
-      defect.delete()
+    # for defect in Defects.query.filter_by(story=self, false_positive=False).all():
+    #   defect.delete()
     self.analyze()
     return self
 
-  def remove_duplicates_of_false_positives(self):
-    for false_positive in self.defects.filter_by(false_positive=True):
-      duplicates = Defects.query.filter_by(story=self, kind=false_positive.kind, subkind=false_positive.subkind, false_positive=False).all()
-      if duplicates:
-        for duplicate in duplicates:
-          duplicate.delete()
-      else:
-        false_positive.delete()
-    return self
+  # def remove_duplicates_of_false_positives(self):
+  #   for false_positive in self.defects.filter_by(false_positive=True):
+  #     duplicates = Defects.query.filter_by(story=self, kind=false_positive.kind, subkind=false_positive.subkind, false_positive=False).all()
+  #     if duplicates:
+  #       for duplicate in duplicates:
+  #         duplicate.delete()
+  #     else:
+  #       false_positive.delete()
+  #   return self
 
 
 class Projects(db.Model):
@@ -164,6 +164,7 @@ class Defects(db.Model):
   false_positive = db.Column(db.Boolean, default=False, nullable=False)
   story_id = db.Column(db.Integer, db.ForeignKey('stories.id'), nullable=False)
   project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+  comments = db.relationship('Comments', backref='defect', lazy='dynamic')
   created_at = db.Column(db.DateTime, default=datetime.now)
   updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -207,6 +208,20 @@ class Defects(db.Model):
     story = self.story
     CorrectDefect.correct_minor_issue(self)
     return story
+
+class Comments(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
+  external_id = db.Column(db.String)
+  text = db.Column(db.Text)
+  defect_id = db.Column(db.Integer, db.ForeignKey('defects.id'), nullable=False)
+  # user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+  created_at = db.Column(db.DateTime, default=datetime.now)
+  updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+  def delete(self):
+    db.session.delete(self)
+    db.session.commit()
+
 
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
@@ -288,7 +303,9 @@ class Analyzer:
     identical_stories.remove(story)
     if cascade:
       for story in identical_stories:
-        for defect in story.defects.filter(Defect.kind=='unique').all(): defect.delete()
+        for defect in story.defects.filter(Defects.kind=='unique').all():
+          for comment in defect.comments.all(): comment.delete()
+          defect.delete()
         Analyzer.unique(story, False)
     return (True if identical_stories else False)
 

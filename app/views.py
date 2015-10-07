@@ -5,6 +5,7 @@ from app import app, babel
 from .models import Stories, Projects, Defects
 from config import LANGUAGES
 import json
+import time
 
 @app.route('/')
 def index():
@@ -92,12 +93,15 @@ def correct_minor_issues(project_unique):
 @app.route('/project/<string:project_unique>/analyze', methods=['GET'])
 def analyze_project(project_unique):
   project = Projects.query.get(project_unique)
+  if project == None: time.sleep(2)
   project.analyze()
+
   return jsonify({'success': True}), 200
 
 @app.route('/project/<string:project_unique>/stories/<string:story_unique>/analyze', methods=['GET'])
 def analyze_story(project_unique, story_unique):
   project = Projects.query.get(project_unique)
+  if project == None: time.sleep(2)
   story = project.stories.filter_by(id=story_unique).first()
   story.re_chunk()
   story.analyze()
