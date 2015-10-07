@@ -195,7 +195,7 @@ class Defects(db.Model):
       db.session.add(defect)
       db.session.commit()
       db.session.merge(defect)
-      r = requests.get("http://127.0.0.1:3000/defects/%s/create_comments" % str(defect.id))
+      r = requests.get("%s/defects/%s/create_comments" %  (os.environ['FRONTEND_URL'], str(defect.id)))
       return defect
 
   def correct_minor_issue(self):
