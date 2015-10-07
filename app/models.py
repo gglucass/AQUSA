@@ -9,6 +9,8 @@ import nltk
 import pandas
 import operator
 import requests
+import threading
+import os
 from collections import Counter
 from datetime import datetime
 # Classes: Stories, Defect, Project  
@@ -195,8 +197,12 @@ class Defects(db.Model):
       db.session.add(defect)
       db.session.commit()
       db.session.merge(defect)
-      r = requests.get("%s/defects/%s/create_comments" %  (os.environ['FRONTEND_URL'], str(defect.id)))
+      t = threading.Thread(target=Defects.send_comment, args=(os.environ['FRONTEND_URL'], str(defect.id)))
+      t.start()
       return defect
+
+  def send_comment(url, defect_id):
+    r = requests.get("%s/defects/%s/create_comments" % (url, defect_id))
 
   def correct_minor_issue(self):
     story = self.story
