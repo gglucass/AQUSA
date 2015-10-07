@@ -257,8 +257,7 @@ class Analyzer:
     indicator_phrases = {'role': False, 'means': False, 'ends': False}
     for key in indicator_phrases:
       for indicator_phrase in eval(key.upper() + '_INDICATORS'):
-        if text:
-          if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
+        if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
     return indicator_phrases
 
   def generate_defects(kind, story, **kwargs):
@@ -339,18 +338,16 @@ class Analyzer:
     if text:
       indicator_phrase = []
       for indicator in eval(indicator_type.upper() + '_INDICATORS'):
-        if text:
-          if re.compile('(%s)' % indicator.lower()).search(text.lower()): indicator_phrase += [indicator.replace('^', '')]
+        if re.compile('(%s)' % indicator.lower()).search(text.lower()): indicator_phrase += [indicator.replace('^', '')]
       return max(indicator_phrase, key=len) if indicator_phrase else None
     else:
       return text
 
   def strip_indicators_pos(text, pos_text, indicator_type):
     for indicator in eval(indicator_type.upper() + '_INDICATORS'):
-      if text:
-        if indicator.lower().strip() in text.lower():
-          indicator_words = nltk.word_tokenize(indicator)
-          pos_text = [x for x in pos_text if x[0] not in indicator_words]
+      if indicator.lower().strip() in text.lower():
+        indicator_words = nltk.word_tokenize(indicator)
+        pos_text = [x for x in pos_text if x[0] not in indicator_words]
     return pos_text
 
 
@@ -364,13 +361,18 @@ class WellFormedAnalyzer:
 
   def means(story):
     if not story.means:
-      Defects.create_unless_duplicate('Add a means', 'well_formed', 'no_means', 'high', story )
+      Defects.create_unless_duplicate('Add what you want to achieve', 'well_formed', 'no_means', 'high', story )
     return story
 
   def role(story):
     if not story.role:
-      Defects.create_unless_duplicate('Add a role', 'well_formed', 'no_role', 'high', story )
+      Defects.create_unless_duplicate('Add for who this story is', 'well_formed', 'no_role', 'high', story )
     return story
+
+  # def ends(story):
+  #   if not story.ends:
+  #     Defects.create_unless_duplicate('Optionally add what the purpose is off this story', 'well_formed', 'no_ends', 'medium', story )
+  #   return story
 
   def means_comma(story):
     if story.role is not None and story.means is not None:
