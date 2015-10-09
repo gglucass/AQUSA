@@ -1,4 +1,5 @@
-from flask import jsonify, abort, session, render_template, request, flash, redirect, url_for, g
+from functools import wraps
+from flask import jsonify, abort, session, render_template, request, flash, redirect, url_for, g, Response
 from werkzeug import secure_filename
 import os
 from app import app, babel
@@ -6,7 +7,31 @@ from .models import Story, Project, Error, Integration, Webhook
 from config import LANGUAGES
 import json
 
+def check_auth(username, password):
+    """This function is called to check if a username /
+    password combination is valid.
+    """
+    return username == os.environ['BASICUSER'] and password == os.environ['BASICPASS']
+    
+
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    auth = request.authorization
+    if not auth or not check_auth(auth.username, auth.password):
+      return authenticate()
+    return f(*args, **kwargs)
+  return decorated
+
 @app.route('/')
+@requires_auth
 def index():
   projects = Project.query.all()
   return render_template('index.html', title='Home', projects=projects)
@@ -16,6 +41,7 @@ def allowed_file(filename):
     filename.rsplit('.', 1)[1] in ['csv']
 
 @app.route('/project/<string:project_unique>/upload_file', methods=['GET', 'POST'])
+@requires_auth
 def upload_file(project_unique):
   project = Project.query.get(project_unique)
   if request.method == 'POST':
@@ -31,19 +57,15 @@ def upload_file(project_unique):
   return render_template('upload_file.html', title='Upload File', project=project)
 
 @app.route('/projects/new', methods=['GET', 'POST'])
+@requires_auth
 def new_project():
   if request.method == 'POST':
     project = Project.create(request.form['name'])
     return redirect(url_for('project', project_unique=project.id))
   return render_template('new_project.html', title='New Project')
 
-
-@app.route('/report', methods=['GET'])
-def error_report():
-  stories = Story.query.order_by('id').all()
-  return render_template('report.html', title='Error report', stories=stories)
-
 @app.route('/project/<string:project_unique>', methods=['GET'])
+@requires_auth
 def project(project_unique):
   project = Project.query.get(project_unique)
   project_errors = project.errors.filter_by(false_positive=False).all()
@@ -122,8 +144,6 @@ def re_analyze_project(project_unique):
   project = Project.query.get(project_unique)
   project.analyze()
   return redirect(url_for('project', project_unique=project_unique))
-
-
 
 # @app.route('/backend/api/v1.0/stories', methods=['POST'])
 # def create_story():
