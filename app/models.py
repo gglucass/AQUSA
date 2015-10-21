@@ -96,6 +96,7 @@ class Projects(db.Model):
   name = db.Column(db.String(120), index=True, nullable=False)
   external_id = db.Column(db.Integer)
   format = db.Column(db.Text, nullable=True, default="As a,I'm able to,So that")
+  create_comments = db.Column(db.Boolean)
   stories = db.relationship('Stories', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
   defects = db.relationship('Defects', backref='project', lazy='dynamic')
   created_at = db.Column(db.DateTime, default=datetime.now)
@@ -198,7 +199,8 @@ class Defects(db.Model):
       db.session.add(defect)
       db.session.commit()
       db.session.merge(defect)
-      Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
+      if defect.project.create_comments == True:
+        Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
       return defect
 
   def send_comment(url, defect_id):
