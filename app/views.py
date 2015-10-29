@@ -12,7 +12,6 @@ def check_auth(username, password):
     password combination is valid.
     """
     return username == os.environ['BASICUSER'] and password == os.environ['BASICPASS']
-    
 
 def authenticate():
     """Sends a 401 response that enables basic auth"""

@@ -38,15 +38,15 @@
 </div>
 
 {% if request.args.get('perfect_stories') == 'True' %}
-  {% set stories = perfect_stories %}
   <div class="story_report">
     <ul class="story_report">
       {% for story in stories %}
-        <li class='perfect-story'>
-          <h4 class='story-title'>{{ "#" + loop.index|string }}</h4>
-          <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
-        </li>
-
+        {% if story.errors.all()|length == 0 %}
+          <li class='perfect-story'>
+            <h4 class='story-title'>{{ "#" + loop.index|string }}</h4>
+            <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
+          </li>
+        {% endif %}
       {% endfor %}
     </ul>
   </div>
@@ -65,8 +65,8 @@
         {% endif %}
         {% if errors.all()|length > 0 %}
           <li class="story_errors">
-            <!-- <h4 class='story-title'>{{ "#" + loop.index|string }}</h4> -->
-            <h4 class='story-title'>{{ "#" + story.id|string }}</h4>
+            <h4 class='story-title'>{{ "#" + loop.index|string }}</h4>
+            <!-- <h4 class='story-title'>{{ "#" + story.id|string }}</h4> -->
             <h4 class="edit story-title" id="{{story.id|string}}">{{ story.text }}</h4>
             {% for error in errors %}
               <div class="error_box">
