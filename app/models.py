@@ -8,28 +8,35 @@ import re
 import nltk
 import pandas
 import operator
+import requests
+import threading
+import os
 from collections import Counter
-# Classes: Story, Error, Project  
+from datetime import datetime
+# Classes: Stories, Defect, Project  
 
-class Story(db.Model):
+class Stories(db.Model):
   id = db.Column(db.Integer, primary_key=True)
-  text = db.Column(db.Text)
+  title = db.Column(db.Text)
+  external_id = db.Column(db.Integer)
   role = db.Column(db.Text)
   means = db.Column(db.Text)
   ends = db.Column(db.Text)
-  project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-  errors = db.relationship('Error', backref='story', lazy='dynamic', cascade='save-update, merge, delete')
+  project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+  defects = db.relationship('Defects', backref='story', lazy='dynamic', cascade='save-update, merge, delete')
+  created_at = db.Column(db.DateTime, default=datetime.now)
+  updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
   def __repr__(self):
-    return '<story: %r, text=%s>' % (self.id, self.text)
+    return '<story: %r, title=%s>' % (self.id, self.title)
 
   def serialize(self):
     class_dict = self.__dict__
     del class_dict['_sa_instance_state']
     return class_dict
 
-  def create(text, project_id, analyze=False):
-    story = Story(text=text, project_id=project_id)
+  def create(title, external_id, project_id, analyze=False):
+    story = Stories(title=title, external_id=external_id, project_id=project_id)
     db.session.add(story)
     db.session.commit()
     db.session.merge(story)
@@ -64,32 +71,36 @@ class Story(db.Model):
     Analyzer.unique(self, True)
     MinimalAnalyzer.minimal(self)
     Analyzer.uniform(self)
-    self.remove_duplicates_of_false_positives()
+    # self.remove_duplicates_of_false_positives()
     return self
 
   def re_analyze(self):
-    for error in Error.query.filter_by(story=self, false_positive=False).all():
-      error.delete()
+    # for defect in Defects.query.filter_by(story=self, false_positive=False).all():
+    #   defect.delete()
     self.analyze()
     return self
 
-  def remove_duplicates_of_false_positives(self):
-    for false_positive in self.errors.filter_by(false_positive=True):
-      duplicates = Error.query.filter_by(story=self, kind=false_positive.kind, subkind=false_positive.subkind, false_positive=False).all()
-      if duplicates:
-        for duplicate in duplicates:
-          duplicate.delete()
-      else:
-        false_positive.delete()
-    return self
+  # def remove_duplicates_of_false_positives(self):
+  #   for false_positive in self.defects.filter_by(false_positive=True):
+  #     duplicates = Defects.query.filter_by(story=self, kind=false_positive.kind, subkind=false_positive.subkind, false_positive=False).all()
+  #     if duplicates:
+  #       for duplicate in duplicates:
+  #         duplicate.delete()
+  #     else:
+  #       false_positive.delete()
+  #   return self
 
 
-class Project(db.Model):
+class Projects(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   name = db.Column(db.String(120), index=True, nullable=False)
+  external_id = db.Column(db.Integer)
   format = db.Column(db.Text, nullable=True, default="As a,I'm able to,So that")
-  stories = db.relationship('Story', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
-  errors = db.relationship('Error', backref='project', lazy='dynamic')
+  create_comments = db.Column(db.Boolean)
+  stories = db.relationship('Stories', backref='project', lazy='dynamic', cascade='save-update, merge, delete')
+  defects = db.relationship('Defects', backref='project', lazy='dynamic')
+  created_at = db.Column(db.DateTime, default=datetime.now)
+  updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
   def __repr__(self):
     return '<Project: %r, name=%s>' % (self.id, self.name)
@@ -119,7 +130,7 @@ class Project(db.Model):
   def process_csv(self, path):
     stories = pandas.read_csv(path, header=-1)
     for story in stories[0]: 
-      Story.create(text=story, project_id=self.id)
+      Stories.create(text=story, project_id=self.id)
     self.analyze()
     return None
 
@@ -133,35 +144,40 @@ class Project(db.Model):
       except:
         print('')
     self.format = ', '.join(most_common_format)
-    self.save()
+    if self.format == "": self.format = "As a, I'm able to, So that"
+    self.save() 
     return "New format is: " + self.format
 
   def analyze(self):
-    self.get_common_format()
     for story in self.stories.all():
       story.re_chunk()
-      story.re_analyze()
+    self.get_common_format()
+    for story in self.stories.all():
+      story.analyze()
     return self
 
-class Error(db.Model):
+class Defects(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   highlight = db.Column(db.Text, nullable=False)
   kind = db.Column(db.String(120), index=True,  nullable=False)
   subkind = db.Column(db.String(120), nullable=False)
   severity = db.Column(db.String(120), nullable=False)
   false_positive = db.Column(db.Boolean, default=False, nullable=False)
-  story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=False)
-  project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+  story_id = db.Column(db.Integer, db.ForeignKey('stories.id'), nullable=False)
+  project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+  comments = db.relationship('Comments', backref='defect', lazy='dynamic')
+  created_at = db.Column(db.DateTime, default=datetime.now)
+  updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
   def __repr__(self):
-    return '<Error: %s, highlight=%s, kind=%s>' % (self.id, self.highlight, self.kind)
+    return '<Defect: %s, highlight=%s, kind=%s>' % (self.id, self.highlight, self.kind)
 
   def create(highlight, kind, subkind, severity, story):
-    error = Error(highlight=highlight, kind=kind, subkind=subkind, severity=severity, story_id=story.id, project_id=story.project.id)
-    db.session.add(error)
+    defect = Defects(highlight=highlight, kind=kind, subkind=subkind, severity=severity, story_id=story.id, project_id=story.project.id)
+    db.session.add(defect)
     db.session.commit()
-    db.session.merge(error)
-    return error
+    db.session.merge(defect)
+    return defect
 
   def delete(self):
     db.session.delete(self)
@@ -174,21 +190,40 @@ class Error(db.Model):
     return self
 
   def create_unless_duplicate(highlight, kind, subkind, severity, story):
-    error = Error(highlight=highlight, kind=kind, subkind=subkind, severity=severity, story_id=story.id, project_id=story.project.id)
-    duplicates = Error.query.filter_by(highlight=highlight, kind=kind, subkind=subkind,
+    defect = Defects(highlight=highlight, kind=kind, subkind=subkind, severity=severity, story_id=story.id, project_id=story.project.id)
+    duplicates = Defects.query.filter_by(highlight=highlight, kind=kind, subkind=subkind,
       severity=severity, story_id=story.id, project_id=story.project.id, false_positive=False).all()
     if duplicates:
       return 'duplicate'
     else:
-      db.session.add(error)
+      db.session.add(defect)
       db.session.commit()
-      db.session.merge(error)
-      return error
+      db.session.merge(defect)
+      if defect.project.create_comments == True:
+        Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
+      return defect
+
+  def send_comment(url, defect_id):
+    r = requests.get("%s/defects/%s/create_comments" % (url, defect_id))
 
   def correct_minor_issue(self):
     story = self.story
-    CorrectError.correct_minor_issue(self)
+    CorrectDefect.correct_minor_issue(self)
     return story
+
+class Comments(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
+  external_id = db.Column(db.String)
+  text = db.Column(db.Text)
+  defect_id = db.Column(db.Integer, db.ForeignKey('defects.id'), nullable=False)
+  # user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+  created_at = db.Column(db.DateTime, default=datetime.now)
+  updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+  def delete(self):
+    db.session.delete(self)
+    db.session.commit()
+
 
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
@@ -224,15 +259,15 @@ CHUNK_GRAMMAR = """
 class Analyzer:
   def atomic(story):
     for chunk in ['"role"', '"means"', '"ends"']:
-      Analyzer.generate_errors('atomic', story, chunk=chunk)
+      Analyzer.generate_defects('atomic', story, chunk=chunk)
     return story
 
   def unique(story, cascade):
-    Analyzer.generate_errors('unique', story, cascade=cascade)
+    Analyzer.generate_defects('unique', story, cascade=cascade)
     return story
 
   def uniform(story):
-    Analyzer.generate_errors('uniform', story)
+    Analyzer.generate_defects('uniform', story)
     return story
       
   def detect_indicator_phrases(text):
@@ -242,12 +277,12 @@ class Analyzer:
         if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
     return indicator_phrases
 
-  def generate_errors(kind, story, **kwargs):
+  def generate_defects(kind, story, **kwargs):
     for kwarg in kwargs:
       exec(kwarg+'='+ str(kwargs[kwarg]))
-    for error_type in ERROR_KINDS[kind]:
-      if eval(error_type['rule']):
-        Error.create_unless_duplicate(eval(error_type['highlight']), kind, error_type['subkind'], error_type['severity'], story)
+    for defect_type in ERROR_KINDS[kind]:
+      if eval(defect_type['rule']):
+        Defects.create_unless_duplicate(eval(defect_type['highlight']), kind, defect_type['subkind'], defect_type['severity'], story)
 
   def inject_text(text, severity='medium'):
     return "<span class='highlight-text severity-" + severity + "'>%s</span>" % text
@@ -266,19 +301,21 @@ class Analyzer:
     return sentences_invalid.count(False) > 1
 
   def identical_rule(story, cascade):
-    identical_stories = Story.query.filter((Story.text==story.text) & (Story.project_id == int(story.project_id))).all()
+    identical_stories = Stories.query.filter((Stories.title==story.title) & (Stories.project_id == int(story.project_id))).all()
     identical_stories.remove(story)
     if cascade:
       for story in identical_stories:
-        for error in story.errors.filter(Error.kind=='unique').all(): error.delete()
+        for defect in story.defects.filter(Defects.kind=='unique').all():
+          for comment in defect.comments.all(): comment.delete()
+          defect.delete()
         Analyzer.unique(story, False)
     return (True if identical_stories else False)
 
   def highlight_text(story, word_array, severity):
-    highlighted_text = story.text
+    highlighted_text = story.title
     indices = []
     for word in word_array:
-      if word in story.text.lower(): indices += [ [story.text.index(word), word] ]
+      if word in story.title.lower(): indices += [ [story.title.index(word), word] ]
     indices.sort(reverse=True)
     for index, word in indices:
       highlighted_text = highlighted_text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + highlighted_text[index+len(word):]
@@ -343,26 +380,31 @@ class WellFormedAnalyzer:
 
   def means(story):
     if not story.means:
-      Error.create_unless_duplicate('Add a means', 'well_formed', 'no_means', 'high', story )
+      Defects.create_unless_duplicate('Add what you want to achieve', 'well_formed', 'no_means', 'high', story )
     return story
 
   def role(story):
     if not story.role:
-      Error.create_unless_duplicate('Add a role', 'well_formed', 'no_role', 'high', story )
+      Defects.create_unless_duplicate('Add for who this story is', 'well_formed', 'no_role', 'high', story )
     return story
+
+  # def ends(story):
+  #   if not story.ends:
+  #     Defects.create_unless_duplicate('Optionally add what the purpose is off this story', 'well_formed', 'no_ends', 'medium', story )
+  #   return story
 
   def means_comma(story):
     if story.role is not None and story.means is not None:
       if story.role.count(',') == 0:
         highlight = story.role + Analyzer.inject_text(',') + ' ' + story.means
-        Error.create_unless_duplicate(highlight, 'well_formed', 'no_means_comma', 'minor', story )
+        Defects.create_unless_duplicate(highlight, 'well_formed', 'no_means_comma', 'minor', story )
     return story
 
   def ends_comma(story):
     if story.means is not None and story.ends is not None:
       if story.means.count(',') == 0:
         highlight = story.means + Analyzer.inject_text(',') + ' ' + story.ends
-        Error.create_unless_duplicate(highlight, 'well_formed', 'no_ends_comma', 'minor', story )
+        Defects.create_unless_duplicate(highlight, 'well_formed', 'no_ends_comma', 'minor', story )
     return story
 
 class MinimalAnalyzer:
@@ -372,32 +414,32 @@ class MinimalAnalyzer:
     return story
 
   def punctuation(story):
-    if any(re.compile('(\%s .)' % x).search(story.text.lower()) for x in PUNCTUATION):
+    if any(re.compile('(\%s .)' % x).search(story.title.lower()) for x in PUNCTUATION):
       highlight = MinimalAnalyzer.punctuation_highlight(story, 'high')
-      Error.create_unless_duplicate(highlight, 'minimal', 'punctuation', 'high', story )
+      Defects.create_unless_duplicate(highlight, 'minimal', 'punctuation', 'high', story )
     return story
 
   def punctuation_highlight(story, severity):
-    highlighted_text = story.text
+    highlighted_text = story.title
     indices = []
     for word in PUNCTUATION:
-      if re.search('(\%s .)' % word, story.text.lower()): indices += [ [story.text.index(word), word] ]
+      if re.search('(\%s .)' % word, story.title.lower()): indices += [ [story.title.index(word), word] ]
     first_punct = min(indices)
     highlighted_text = highlighted_text[:first_punct[0]] + "<span class='highlight-text severity-" + severity + "'>" + highlighted_text[first_punct[0]:] + "</span>"
     return highlighted_text
 
   def brackets(story):
-    if any(re.compile('(\%s' % x[0] + '.*\%s(\W|\Z))' % x[1]).search(story.text.lower()) for x in BRACKETS):
+    if any(re.compile('(\%s' % x[0] + '.*\%s(\W|\Z))' % x[1]).search(story.title.lower()) for x in BRACKETS):
       highlight = MinimalAnalyzer.brackets_highlight(story, 'high')
-      Error.create_unless_duplicate(highlight, 'minimal', 'brackets', 'high', story )
-    return story.errors.all()
+      Defects.create_unless_duplicate(highlight, 'minimal', 'brackets', 'high', story )
+    return story.defects.all()
 
   def brackets_highlight(story, severity):
-    highlighted_text = story.text
+    highlighted_text = story.title
     matches = []
     for x in BRACKETS:
       split_string = '[^\%s' % x[1] + ']+\%s' % x[1]
-      strings = re.findall(split_string, story.text)
+      strings = re.findall(split_string, story.title)
       match_string = '(\%s' % x[0] + '.*\%s(\W|\Z))' % x[1]
       string_length = 0
       for string in strings:
@@ -415,7 +457,7 @@ class StoryChunker:
   def chunk_story(story):
     StoryChunker.chunk_on_indicators(story)
     if story.means is None:
-      potential_means = story.text
+      potential_means = story.title
       if story.role is not None:
         potential_means = potential_means.replace(story.role, "", 1).strip()
       if story.ends is not None:
@@ -426,18 +468,19 @@ class StoryChunker:
   def detect_indicators(story):
     indicators = {'role': None, "means": None, 'ends': None}
     for indicator in indicators:
-      indicator_phrase = StoryChunker.detect_indicator_phrase(story.text, indicator)
+      indicator_phrase = StoryChunker.detect_indicator_phrase(story.title, indicator)
       if indicator_phrase[0]:
-        indicators[indicator.lower()] = story.text.lower().index(indicator_phrase[1].lower())
+        indicators[indicator.lower()] = story.title.lower().index(indicator_phrase[1].lower())
     return indicators
 
   def detect_indicator_phrase(text, indicator_type):
     result = False
     detected_indicators = ['']
     for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
-      if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
-        result = True
-        detected_indicators.append(indicator_phrase.replace('^', ''))
+      if text:
+        if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
+          result = True
+          detected_indicators.append(indicator_phrase.replace('^', ''))
     return (result, max(detected_indicators, key=len))
 
   def chunk_on_indicators(story):
@@ -445,16 +488,16 @@ class StoryChunker:
     if indicators['means'] is not None and indicators['ends'] is not None:
       indicators = StoryChunker.correct_erroneous_indicators(story, indicators)
     if indicators['role'] is not None and indicators['means'] is not None:
-      story.role = story.text[indicators['role']:indicators['means']].strip()
-      story.means = story.text[indicators['means']:indicators['ends']].strip()
+      story.role = story.title[indicators['role']:indicators['means']].strip()
+      story.means = story.title[indicators['means']:indicators['ends']].strip()
     elif indicators['role'] is not None and indicators['means'] is None:
-      role = StoryChunker.detect_indicator_phrase(story.text, 'role')
-      new_text = story.text.replace(role[1], '')
+      role = StoryChunker.detect_indicator_phrase(story.title, 'role')
+      new_text = story.title.replace(role[1], '')
       sentence = Analyzer.content_chunk(new_text, 'role')
       NPs_after_role = StoryChunker.keep_if_NP(sentence)
       if NPs_after_role:
-        story.role = story.text[indicators['role']:(len(role[1]) + len(NPs_after_role))].strip()
-    if indicators['ends']: story.ends = story.text[indicators['ends']:None].strip()
+        story.role = story.title[indicators['role']:(len(role[1]) + len(NPs_after_role))].strip()
+    if indicators['ends']: story.ends = story.title[indicators['ends']:None].strip()
     story.save()
     return story
 
@@ -480,31 +523,31 @@ class StoryChunker:
   def correct_erroneous_indicators(story, indicators):
     # means is larger than ends
     if indicators['means'] > indicators['ends']:
-      new_means = StoryChunker.detect_indicator_phrase(story.text[:indicators['ends']], 'means')
+      new_means = StoryChunker.detect_indicator_phrase(story.title[:indicators['ends']], 'means')
       #replication of #427 - refactor?
       if new_means[0]:
-        indicators['means'] = story.text.lower().index(new_means[1].lower())
+        indicators['means'] = story.title.lower().index(new_means[1].lower())
       else:
         indicators['means'] = None
     return indicators
 
 
-class CorrectError:
-  def correct_minor_issue(error):
-    story = error.story
-    eval('CorrectError.correct_%s(error)' % error.subkind)
+class CorrectDefect:
+  def correct_minor_issue(defect):
+    story = defect.story
+    eval('CorrectDefect.correct_%s(defect)' % defect.subkind)
     return story
 
-  def correct_no_means_comma(error):
-    story = error.story
-    story.text = story.role + ', ' + story.means 
-    if story.ends: story.text = story.text + ' ' + story.ends
+  def correct_no_means_comma(defect):
+    story = defect.story
+    story.title = story.role + ', ' + story.means 
+    if story.ends: story.title = story.title + ' ' + story.ends
     story.save()
     return story
 
-  def correct_no_ends_comma(error):
-    story = error.story
-    story.text = story.means + ', ' + story.ends
-    if story.role: story.text = story.role + ' ' + story.text
+  def correct_no_ends_comma(defect):
+    story = defect.story
+    story.title = story.means + ', ' + story.ends
+    if story.role: story.title = story.role + ' ' + story.title
     story.save()
     return story

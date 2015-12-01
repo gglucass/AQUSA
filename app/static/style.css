@@ -20,7 +20,7 @@ p {
 }
 
 
-.error_box {
+.defect_box {
   float: left;
   width: 99%;
   height: auto;
@@ -49,18 +49,18 @@ p {
 }
 
 
-.error_severity {
+.defect_severity {
   display: inline;
   text-align: center;
   height: inherit;
 }
 
-p.error_title {
+p.defect_title {
   font-weight: bold;
   font-size: 16px;
 }
 
-p.error_explanation {
+p.defect_explanation {
   font-style: italic;
 }
 
@@ -95,7 +95,7 @@ p.error_explanation {
   display: inline;
 }
 
-.error-circle {
+.defect-circle {
   display: inline-block;
   border-radius: 50%;
 
@@ -110,11 +110,11 @@ p.error_explanation {
   position: relative;
 }
 
-.error-circle .height-fix {
+.defect-circle .height-fix {
   margin-top: 100%;
 }
 
-.error-circle .error-circle-content {
+.defect-circle .defect-circle-content {
   position: absolute;
   left: 0;
   top: 50%;
@@ -124,15 +124,15 @@ p.error_explanation {
   margin-top: -16px; /* Note, this must be half the font size */
 }
 
-.severe-errors {
+.severe-defects {
   background: #FF6A70;
 }
 
-.medium-errors {
+.medium-defects {
   background: #FFD670;
 }
 
-.minor-errors {
+.minor-defects {
   background: #ddd;
 }
 
@@ -144,26 +144,26 @@ p.error_explanation {
   background: #C5FF74;
 }
 
-.error-text {
+.defect-text {
   font: 32px Arial, sans-serif;
   display: inline-block;
   vertical-align: top;
   margin-top: 12px;
 }
 
-.error-block {
+.defect-block {
   padding: 10px 0 10px 10px;
   border: 2px solid #666;
   height:80px;
 }
 
-.left-error-block {
+.left-defect-block {
   float: left;
   display: inline-block;
   width: 50%;
 }
 
-.right-error-block {
+.right-defect-block {
   display: inline-block;
   width: 50%;
 }
