@@ -9,7 +9,7 @@ class TestCase(unittest.TestCase):
   def setUp(self):
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
-    app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://Garm:myrddin@localhost/aqusa_test"
+    app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://username:password@localhost/aqusa_test"
     self.app = app.test_client()
     db.create_all()
 
