@@ -36,3 +36,5 @@ sqlparse==0.1.14
 Tempita==0.5.2
 Unidecode==0.4.17
 Werkzeug==0.10.4
+uwsgi==2.0.11.2
+Flask-MySQLdb==0.2.0
