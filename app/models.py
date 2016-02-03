@@ -458,10 +458,6 @@ class StoryChunker:
       StoryChunker.means_tags_present(story, potential_means)
     return story.role, story.means, story.ends
 
-  def detect_indicators(story):
-    indicators = {'role': None, "means": None, 'ends': None}
-    for indicator in indicators:
-      indicator_phrase = StoryChunker.detect_indicator_phrase(story.title, indicator)
       if indicator_phrase[0]:
         indicators[indicator.lower()] = story.title.lower().index(indicator_phrase[1].lower())
     return indicators
@@ -493,6 +489,25 @@ class StoryChunker:
     if indicators['ends']: story.ends = story.title[indicators['ends']:None].strip()
     story.save()
     return story
+
+  def detect_indicators(story):
+    indicators = {'role': None, "means": None, 'ends': None}
+    for indicator in indicators:
+      indicator_phrase = StoryChunker.detect_indicator_phrase(story.title, indicator)
+      if indicator_phrase[0]:
+        indicators[indicator.lower()] = story.title.lower().index(indicator_phrase[1].lower())
+    return indicators
+
+
+  def detect_indicator_phrase(text, indicator_type):
+    result = False
+    detected_indicators = ['']
+    for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
+      if text:
+        if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
+          result = True
+          detected_indicators.append(indicator_phrase.replace('^', ''))
+    return (result, max(detected_indicators, key=len))
 
   def keep_if_NP(parsed_tree):
     return_string = []
