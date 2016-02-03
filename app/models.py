@@ -406,6 +406,7 @@ class MinimalAnalyzer:
   def minimal(story):
     MinimalAnalyzer.punctuation(story)
     MinimalAnalyzer.brackets(story)
+    MinimalAnalyzer.indicator_repetition(story)
     return story
 
   def punctuation(story):
@@ -447,6 +448,23 @@ class MinimalAnalyzer:
     for index, word in matches:
       highlighted_text = highlighted_text[:index[0]] + "<span class='highlight-text severity-" +  severity + "'>" + word + "</span>" + highlighted_text[index[1]:]
     return highlighted_text
+
+  def indicator_repetition(story):
+    indicators = StoryChunker.detect_all_indicators(story)
+    for indicator in indicators:
+      hits = indicators[indicator]
+      hits = StoryChunker.remove_overlapping_tuples(hits)
+      if len(hits) >= 2:
+        highlight = MinimalAnalyzer.indicator_repetition_highlight(story.title, hits, 'high')
+        Defects.create_unless_duplicate(highlight, 'minimal', 'indicator_repetition', 'high', story)
+    return story
+  
+  def indicator_repetition_highlight(text, ranges, severity):
+    indices = []
+    for rang in ranges:
+      indices += [[rang[0], text[ rang[0]:rang[1] ] ]]
+    return Analyzer.highlight_text_with_indices(text, indices, severity)
+
 
 class StoryChunker:
   def chunk_story(story):
