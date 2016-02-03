@@ -498,6 +498,14 @@ class StoryChunker:
         indicators[indicator.lower()] = story.title.lower().index(indicator_phrase[1].lower())
     return indicators
 
+  def detect_all_indicators(story):
+    indicators = {'role': [], "means": [], 'ends': []}
+    for indicator in indicators:
+      for indicator_phrase in eval(indicator.upper() + '_INDICATORS'):  
+        if story.title:
+          for indicator_match in re.compile('(%s)' % indicator_phrase.replace('^', '').lower()).finditer(story.title.lower()):
+            indicators[indicator] += [indicator_match.span()]
+    return indicators
 
   def detect_indicator_phrase(text, indicator_type):
     result = False
