@@ -228,7 +228,7 @@ class Comments(db.Model):
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
 ENDS_INDICATORS = ["So that ", "In order to ", "So "]
-CONJUNCTIONS = [' and ', '&', '+', ' or ']
+CONJUNCTIONS = [' and ', '&', '+', ' or ', '>', '<', '/', '\\']
 PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?', '*']
 BRACKETS = [['(', ')'], ['[', ']'], ['{', '}'], ['⟨', '⟩']]
 ERROR_KINDS = { 'well_formed_content': [
