@@ -507,6 +507,19 @@ class StoryChunker:
             indicators[indicator] += [indicator_match.span()]
     return indicators
 
+  # get longest from overlapping indicator hits
+  def remove_overlapping_tuples(tuple_list):
+    for hit in tuple_list:
+      duplicate_tuple_list = list(tuple_list)
+      duplicate_tuple_list.remove(hit)
+      for duplicate in duplicate_tuple_list:
+        if hit[0] <= duplicate[0] and hit[1] >= duplicate[1]:
+          tuple_list.remove(duplicate)
+        elif hit[0] >= duplicate[0] and hit[1] <= duplicate[1]:
+          tuple_list.remove(hit)
+    return tuple_list
+
+
   def detect_indicator_phrase(text, indicator_type):
     result = False
     detected_indicators = ['']
