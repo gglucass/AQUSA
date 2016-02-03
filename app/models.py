@@ -305,14 +305,16 @@ class Analyzer:
     return (True if identical_stories else False)
 
   def highlight_text(story, word_array, severity):
-    highlighted_text = story.title
     indices = []
     for word in word_array:
       if word in story.title.lower(): indices += [ [story.title.index(word), word] ]
+    return Analyzer.highlight_text_with_indices(story.title, indices, severity)
+
+  def highlight_text_with_indices(text, indices, severity):
     indices.sort(reverse=True)
     for index, word in indices:
-      highlighted_text = highlighted_text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + highlighted_text[index+len(word):]
-    return highlighted_text
+      text = text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + text[index+len(word):]
+    return text
 
   def well_formed_content_rule(story_part, kind, tags):
     result = Analyzer.content_chunk(story_part, kind)
