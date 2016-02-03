@@ -269,13 +269,6 @@ class Analyzer:
   def uniform(story):
     Analyzer.generate_defects('uniform', story)
     return story
-      
-  def detect_indicator_phrases(text):
-    indicator_phrases = {'role': False, 'means': False, 'ends': False}
-    for key in indicator_phrases:
-      for indicator_phrase in eval(key.upper() + '_INDICATORS'):
-        if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
-    return indicator_phrases
 
   def generate_defects(kind, story, **kwargs):
     for kwarg in kwargs:
