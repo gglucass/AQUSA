@@ -255,6 +255,7 @@ CHUNK_GRAMMAR = """
       MEANS: {<AP>?<VP>}
       ENDS: {<AP>?<VP>}
     """
+SPECIAL_WORDS = {'import': 'VP', "export": 'VP', 'select': 'VP', 'support': 'VP'}
 
 class Analyzer:
   def atomic(story):
@@ -316,6 +317,7 @@ class Analyzer:
       text = text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + text[index+len(word):]
     return text
 
+  # result indicates whether the story_part contains a well_formed error
   def well_formed_content_rule(story_part, kind, tags):
     result = Analyzer.content_chunk(story_part, kind)
     well_formed = True
@@ -344,9 +346,20 @@ class Analyzer:
   def content_chunk(chunk, kind):
     sentence = AQUSATagger.parse(chunk)[0]
     sentence = Analyzer.strip_indicators_pos(chunk, sentence, kind)
+    sentence = Analyzer.replace_tag_of_special_words(sentence)
     cp = nltk.RegexpParser(CHUNK_GRAMMAR)
     result = cp.parse(sentence)
     return result
+
+  def replace_tag_of_special_words(sentence):
+    index = 0
+    for word in sentence:
+      if word[0] in SPECIAL_WORDS:  
+        lst = list(sentence[index])
+        lst[1] = SPECIAL_WORDS[word[0]]
+        sentence[index] = tuple(lst)
+      index+=1
+    return sentence
 
   def extract_indicator_phrases(text, indicator_type):
     if text:
