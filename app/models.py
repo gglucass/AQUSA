@@ -228,7 +228,7 @@ class Comments(db.Model):
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
 MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
 ENDS_INDICATORS = ["So that ", "In order to ", "So "]
-CONJUNCTIONS = [' and ', '&', '+', ' or ']
+CONJUNCTIONS = [' and ', '&', '+', ' or ', '>', '<', '/', '\\']
 PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?', '*']
 BRACKETS = [['(', ')'], ['[', ']'], ['{', '}'], ['⟨', '⟩']]
 ERROR_KINDS = { 'well_formed_content': [
@@ -255,6 +255,7 @@ CHUNK_GRAMMAR = """
       MEANS: {<AP>?<VP>}
       ENDS: {<AP>?<VP>}
     """
+SPECIAL_WORDS = {'import': 'VP', "export": 'VP', 'select': 'VP', 'support': 'VP'}
 
 class Analyzer:
   def atomic(story):
@@ -269,13 +270,6 @@ class Analyzer:
   def uniform(story):
     Analyzer.generate_defects('uniform', story)
     return story
-      
-  def detect_indicator_phrases(text):
-    indicator_phrases = {'role': False, 'means': False, 'ends': False}
-    for key in indicator_phrases:
-      for indicator_phrase in eval(key.upper() + '_INDICATORS'):
-        if indicator_phrase.lower() in text.lower(): indicator_phrases[key] = True
-    return indicator_phrases
 
   def generate_defects(kind, story, **kwargs):
     for kwarg in kwargs:
@@ -312,15 +306,18 @@ class Analyzer:
     return (True if identical_stories else False)
 
   def highlight_text(story, word_array, severity):
-    highlighted_text = story.title
     indices = []
     for word in word_array:
       if word in story.title.lower(): indices += [ [story.title.index(word), word] ]
+    return Analyzer.highlight_text_with_indices(story.title, indices, severity)
+
+  def highlight_text_with_indices(text, indices, severity):
     indices.sort(reverse=True)
     for index, word in indices:
-      highlighted_text = highlighted_text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + highlighted_text[index+len(word):]
-    return highlighted_text
+      text = text[:index] + "<span class='highlight-text severity-" + severity + "'>" + word + "</span>" + text[index+len(word):]
+    return text
 
+  # result indicates whether the story_part contains a well_formed error
   def well_formed_content_rule(story_part, kind, tags):
     result = Analyzer.content_chunk(story_part, kind)
     well_formed = True
@@ -349,9 +346,20 @@ class Analyzer:
   def content_chunk(chunk, kind):
     sentence = AQUSATagger.parse(chunk)[0]
     sentence = Analyzer.strip_indicators_pos(chunk, sentence, kind)
+    sentence = Analyzer.replace_tag_of_special_words(sentence)
     cp = nltk.RegexpParser(CHUNK_GRAMMAR)
     result = cp.parse(sentence)
     return result
+
+  def replace_tag_of_special_words(sentence):
+    index = 0
+    for word in sentence:
+      if word[0] in SPECIAL_WORDS:  
+        lst = list(sentence[index])
+        lst[1] = SPECIAL_WORDS[word[0]]
+        sentence[index] = tuple(lst)
+      index+=1
+    return sentence
 
   def extract_indicator_phrases(text, indicator_type):
     if text:
@@ -411,6 +419,7 @@ class MinimalAnalyzer:
   def minimal(story):
     MinimalAnalyzer.punctuation(story)
     MinimalAnalyzer.brackets(story)
+    MinimalAnalyzer.indicator_repetition(story)
     return story
 
   def punctuation(story):
@@ -453,6 +462,23 @@ class MinimalAnalyzer:
       highlighted_text = highlighted_text[:index[0]] + "<span class='highlight-text severity-" +  severity + "'>" + word + "</span>" + highlighted_text[index[1]:]
     return highlighted_text
 
+  def indicator_repetition(story):
+    indicators = StoryChunker.detect_all_indicators(story)
+    for indicator in indicators:
+      hits = indicators[indicator]
+      hits = StoryChunker.remove_overlapping_tuples(hits)
+      if len(hits) >= 2:
+        highlight = MinimalAnalyzer.indicator_repetition_highlight(story.title, hits, 'high')
+        Defects.create_unless_duplicate(highlight, 'minimal', 'indicator_repetition', 'high', story)
+    return story
+  
+  def indicator_repetition_highlight(text, ranges, severity):
+    indices = []
+    for rang in ranges:
+      indices += [[rang[0], text[ rang[0]:rang[1] ] ]]
+    return Analyzer.highlight_text_with_indices(text, indices, severity)
+
+
 class StoryChunker:
   def chunk_story(story):
     StoryChunker.chunk_on_indicators(story)
@@ -464,24 +490,6 @@ class StoryChunker:
         potential_means = potential_means.replace(story.ends, "", 1).strip()
       StoryChunker.means_tags_present(story, potential_means)
     return story.role, story.means, story.ends
-
-  def detect_indicators(story):
-    indicators = {'role': None, "means": None, 'ends': None}
-    for indicator in indicators:
-      indicator_phrase = StoryChunker.detect_indicator_phrase(story.title, indicator)
-      if indicator_phrase[0]:
-        indicators[indicator.lower()] = story.title.lower().index(indicator_phrase[1].lower())
-    return indicators
-
-  def detect_indicator_phrase(text, indicator_type):
-    result = False
-    detected_indicators = ['']
-    for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
-      if text:
-        if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
-          result = True
-          detected_indicators.append(indicator_phrase.replace('^', ''))
-    return (result, max(detected_indicators, key=len))
 
   def chunk_on_indicators(story):
     indicators = StoryChunker.detect_indicators(story)
@@ -500,6 +508,46 @@ class StoryChunker:
     if indicators['ends']: story.ends = story.title[indicators['ends']:None].strip()
     story.save()
     return story
+
+  def detect_indicators(story):
+    indicators = {'role': None, "means": None, 'ends': None}
+    for indicator in indicators:
+      indicator_phrase = StoryChunker.detect_indicator_phrase(story.title, indicator)
+      if indicator_phrase[0]:
+        indicators[indicator.lower()] = story.title.lower().index(indicator_phrase[1].lower())
+    return indicators
+
+  def detect_all_indicators(story):
+    indicators = {'role': [], "means": [], 'ends': []}
+    for indicator in indicators:
+      for indicator_phrase in eval(indicator.upper() + '_INDICATORS'):  
+        if story.title:
+          for indicator_match in re.compile('(%s)' % indicator_phrase.replace('^', '').lower()).finditer(story.title.lower()):
+            indicators[indicator] += [indicator_match.span()]
+    return indicators
+
+  # get longest from overlapping indicator hits
+  def remove_overlapping_tuples(tuple_list):
+    for hit in tuple_list:
+      duplicate_tuple_list = list(tuple_list)
+      duplicate_tuple_list.remove(hit)
+      for duplicate in duplicate_tuple_list:
+        if hit[0] <= duplicate[0] and hit[1] >= duplicate[1]:
+          tuple_list.remove(duplicate)
+        elif hit[0] >= duplicate[0] and hit[1] <= duplicate[1]:
+          tuple_list.remove(hit)
+    return tuple_list
+
+
+  def detect_indicator_phrase(text, indicator_type):
+    result = False
+    detected_indicators = ['']
+    for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
+      if text:
+        if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
+          result = True
+          detected_indicators.append(indicator_phrase.replace('^', ''))
+    return (result, max(detected_indicators, key=len))
 
   def keep_if_NP(parsed_tree):
     return_string = []
