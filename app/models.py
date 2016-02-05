@@ -286,11 +286,11 @@ class Analyzer:
     if chunk: 
       for x in CONJUNCTIONS:
         if x in chunk.lower():
-          if kind == 'means':
-            for means in chunk.split(x):
+          if kind == 'means':            
+            for means in re.split(x, chunk, flags=re.IGNORECASE):
               sentences_invalid.append(Analyzer.well_formed_content_rule(means, 'means', ['MEANS']))
           if kind == 'role':
-            for role in chunk.split(x):
+            for role in re.split(x, chunk, flags=re.IGNORECASE):
               sentences_invalid.append(Analyzer.well_formed_content_rule(role, "role", ["NP"]))
     return sentences_invalid.count(False) > 1
 
@@ -308,7 +308,7 @@ class Analyzer:
   def highlight_text(story, word_array, severity):
     indices = []
     for word in word_array:
-      if word in story.title.lower(): indices += [ [story.title.index(word), word] ]
+      if word in story.title.lower(): indices += [ [story.title.lower().index(word), word] ]
     return Analyzer.highlight_text_with_indices(story.title, indices, severity)
 
   def highlight_text_with_indices(text, indices, severity):
