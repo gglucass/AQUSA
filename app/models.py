@@ -227,9 +227,9 @@ class Comments(db.Model):
 
 
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
-MEANS_INDICATORS = ["I'm able to ", "I am able to ", "I want to ", "I wish to ", "I can "]
-ENDS_INDICATORS = ["So that ", "In order to ", "So "]
-CONJUNCTIONS = [' and ', '&', '+', ' or ', '>', '<', '/', '\\']
+MEANS_INDICATORS = ["[, ]I'm able to ", "[, ]I am able to ", "[, ]I want to ", "[, ]I wish to ", "[, ]I can ", "[, ]I want "]
+ENDS_INDICATORS = ["[, ]So that ", "[, ]In order to ", "[, ]So "]
+CONJUNCTIONS = [' and ', '&', '\+', ' or ', '>', '<', '/', '\\']
 PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?', '*']
 BRACKETS = [['(', ')'], ['[', ']'], ['{', '}'], ['⟨', '⟩']]
 ERROR_KINDS = { 'well_formed_content': [
@@ -405,7 +405,7 @@ class Analyzer:
     if text:
       indicator_phrase = []
       for indicator in eval(indicator_type.upper() + '_INDICATORS'):
-        if re.compile('(%s)' % indicator.lower()).search(text.lower()): indicator_phrase += [indicator.replace('^', '')]
+        if re.compile('(%s)' % indicator.lower().replace('[, ]', '')).search(text.lower()): indicator_phrase += [indicator.replace('^', '').replace('[, ]', '')]
       return max(indicator_phrase, key=len) if indicator_phrase else None
     else:
       return text
@@ -422,9 +422,9 @@ class WellFormedAnalyzer:
   def well_formed(story):
     WellFormedAnalyzer.means(story)
     WellFormedAnalyzer.role(story)
-    WellFormedAnalyzer.means_comma(story)
-    WellFormedAnalyzer.ends_comma(story)
-    return story
+    # WellFormedAnalyzer.means_comma(story)
+    # WellFormedAnalyzer.ends_comma(story)
+    # return story
 
   def means(story):
     if not story.means:
@@ -540,7 +540,8 @@ class StoryChunker:
       story.means = story.title[indicators['means']:indicators['ends']].strip()
     elif indicators['role'] is not None and indicators['means'] is None:
       role = StoryChunker.detect_indicator_phrase(story.title, 'role')
-      new_text = story.title.replace(role[1], '')
+      text = StoryChunker.remove_special_characters(story.title)
+      new_text = text.replace(role[1], '')
       sentence = Analyzer.content_chunk(new_text, 'role')
       NPs_after_role = StoryChunker.keep_if_NP(sentence)
       if NPs_after_role:
@@ -562,7 +563,7 @@ class StoryChunker:
     for indicator in indicators:
       for indicator_phrase in eval(indicator.upper() + '_INDICATORS'):  
         if story.title:
-          for indicator_match in re.compile('(%s)' % indicator_phrase.replace('^', '').lower()).finditer(story.title.lower()):
+          for indicator_match in re.compile('(%s)' % indicator_phrase.lower()).finditer(story.title.lower()):
             indicators[indicator] += [indicator_match.span()]
     return indicators
 
@@ -578,16 +579,22 @@ class StoryChunker:
           tuple_list.remove(hit)
     return tuple_list
 
+  def remove_special_characters(text):
+    return ''.join(e for e in text if (e.isalnum() or e.isspace() ) ).strip()
 
   def detect_indicator_phrase(text, indicator_type):
     result = False
     detected_indicators = ['']
+    no_special_char_text = StoryChunker.remove_special_characters(text)
     for indicator_phrase in eval(indicator_type.upper() + '_INDICATORS'):
       if text:
-        if re.compile('(%s)' % indicator_phrase.lower()).search(text.lower()): 
-          result = True
-          detected_indicators.append(indicator_phrase.replace('^', ''))
+        if re.compile('(%s)' % indicator_phrase.lower()).search(no_special_char_text.lower()):
+          stripped_indicator = indicator_phrase.replace('^', '').replace('[, ]', '').strip()
+          if stripped_indicator.lower() in text.lower():
+            result = True
+            detected_indicators.append(stripped_indicator)
     return (result, max(detected_indicators, key=len))
+
 
   def keep_if_NP(parsed_tree):
     return_string = []
