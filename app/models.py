@@ -13,6 +13,7 @@ import threading
 import os
 from collections import Counter
 from datetime import datetime
+from nltk.corpus import wordnet
 # Classes: Stories, Defect, Project  
 
 class Stories(db.Model):
@@ -286,13 +287,52 @@ class Analyzer:
     if chunk: 
       for x in CONJUNCTIONS:
         if x in chunk.lower():
-          if kind == 'means':            
+          if kind == 'means':
             for means in re.split(x, chunk, flags=re.IGNORECASE):
               sentences_invalid.append(Analyzer.well_formed_content_rule(means, 'means', ['MEANS']))
           if kind == 'role':
-            for role in re.split(x, chunk, flags=re.IGNORECASE):
-              sentences_invalid.append(Analyzer.well_formed_content_rule(role, "role", ["NP"]))
+            kontinue = True
+            if x in ['&', '+']: kontinue = Analyzer.symbol_in_role_exception(chunk, x)
+            if kontinue:
+              for role in re.split(x, chunk, flags=re.IGNORECASE):
+                sentences_invalid.append(Analyzer.well_formed_content_rule(role, "role", ["NP"]))
     return sentences_invalid.count(False) > 1
+
+  def symbol_in_role_exception(chunk, conjunction):
+    surrounding_words = Analyzer.get_surrounding_words(chunk, conjunction)
+    exception = [False, False, False]
+    exception[0] = Analyzer.space_before_or_after_conjunction(chunk, conjunction)
+    exception[1] = Analyzer.surrounding_words_bigger_than(3, surrounding_words)
+    exception[2] = Analyzer.surrounding_words_valid(surrounding_words)
+    return exception.count(True) >= 2
+
+  def space_before_or_after_conjunction(chunk, conjunction):
+    idx = chunk.lower().index(conjunction.lower())
+    space = chunk[idx-1].isspace() or chunk[idx+len(conjunction)].isspace()
+    return space
+
+  def get_surrounding_words(chunk, conjunction):
+    parts = chunk.split(conjunction)
+    words = []
+    for index, part in enumerate(parts):
+      if index % 2 == 0:
+        words += [part.split()[-1]]
+      else:
+        words += [part.split()[0]]
+    return words
+
+  def surrounding_words_bigger_than(number, word_array):
+    result = False
+    for word in word_array:
+      if len(word) > number: result = True
+    return result
+
+  def surrounding_words_valid(word_array):
+    result = False
+    for word in word_array:
+      if not wordnet.synsets(word): result = True
+    return result
+    
 
   def identical_rule(story, cascade):
     identical_stories = Stories.query.filter((Stories.title==story.title) & (Stories.project_id == int(story.project_id))).all()
