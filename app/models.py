@@ -504,11 +504,11 @@ class MinimalAnalyzer:
 
   def indicator_repetition(story):
     indicators = StoryChunker.detect_all_indicators(story)
+    for indicator in indicators: indicators[indicator] = StoryChunker.remove_overlapping_tuples(indicators[indicator])
+    indicators = MinimalAnalyzer.remove_indicator_repetition_exceptions(indicators, story)
     for indicator in indicators:
-      hits = indicators[indicator]
-      hits = StoryChunker.remove_overlapping_tuples(hits)
-      if len(hits) >= 2:
-        highlight = MinimalAnalyzer.indicator_repetition_highlight(story.title, hits, 'high')
+      if len(indicators[indicator]) >= 2:
+        highlight = MinimalAnalyzer.indicator_repetition_highlight(story.title, indicators[indicator], 'high')
         Defects.create_unless_duplicate(highlight, 'minimal', 'indicator_repetition', 'high', story)
     return story
   
@@ -517,6 +517,15 @@ class MinimalAnalyzer:
     for rang in ranges:
       indices += [[rang[0], text[ rang[0]:rang[1] ] ]]
     return Analyzer.highlight_text_with_indices(text, indices, severity)
+  
+  def remove_indicator_repetition_exceptions(indicators, story):
+    # exception #1: means indicator after ends indicator
+    for means_indicator in indicators['means']:
+      for ends_indicator in indicators['ends']:
+        if ends_indicator[1] >= means_indicator[0] and ends_indicator[1] <= means_indicator[1]:
+          indicators['means'].remove(means_indicator)
+    return indicators
+
 
 
 class StoryChunker:
