@@ -589,7 +589,7 @@ class StoryChunker:
     return tuple_list
 
   def remove_special_characters(text):
-    return ''.join( e if (e.isalnum() or e.isspace() ) else ' ' for e in text).strip()
+    return ''.join( e if (e.isalnum() or e.isspace() or e == "\'" or e == "\"" ) else ' ' for e in text).strip()
 
   def detect_indicator_phrase(text, indicator_type):
     result = False
