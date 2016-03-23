@@ -178,16 +178,17 @@ class Defects(db.Model):
     return self
 
   def create_unless_duplicate(highlight, kind, subkind, severity, story):
-    defect = Defects(highlight=highlight, kind=kind, subkind=subkind, severity=severity, story_id=story.id, project_id=story.project.id)
+    project = story.project
+    defect = Defects(highlight=highlight, kind=kind, subkind=subkind, severity=severity, story_id=story.id, project_id=project.id)
     duplicates = Defects.query.filter_by(highlight=highlight, kind=kind, subkind=subkind,
-      severity=severity, story_id=story.id, project_id=story.project.id, false_positive=False).all()
+      severity=severity, story_id=story.id, project_id=project.id, false_positive=False).all()
     if duplicates:
       return 'duplicate'
     else:
       db.session.add(defect)
       db.session.merge(defect)
       db.session.commit()
-      if defect.project.create_comments == True:
+      if project.create_comments == True:
         Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
       return defect
 
