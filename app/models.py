@@ -72,24 +72,11 @@ class Stories(db.Model):
     Analyzer.unique(self, True)
     MinimalAnalyzer.minimal(self)
     Analyzer.uniform(self)
-    # self.remove_duplicates_of_false_positives()
     return self
 
   def re_analyze(self):
-    # for defect in Defects.query.filter_by(story=self, false_positive=False).all():
-    #   defect.delete()
     self.analyze()
     return self
-
-  # def remove_duplicates_of_false_positives(self):
-  #   for false_positive in self.defects.filter_by(false_positive=True):
-  #     duplicates = Defects.query.filter_by(story=self, kind=false_positive.kind, subkind=false_positive.subkind, false_positive=False).all()
-  #     if duplicates:
-  #       for duplicate in duplicates:
-  #         duplicate.delete()
-  #     else:
-  #       false_positive.delete()
-  #   return self
 
 
 class Projects(db.Model):
@@ -198,8 +185,8 @@ class Defects(db.Model):
       return 'duplicate'
     else:
       db.session.add(defect)
-      db.session.commit()
       db.session.merge(defect)
+      db.session.commit()
       if defect.project.create_comments == True:
         Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
       return defect
