@@ -189,7 +189,10 @@ class Defects(db.Model):
       db.session.merge(defect)
       db.session.commit()
       if project.create_comments == True:
-        Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
+        try:
+          Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
+        except:
+          pass
       return defect
 
   def send_comment(url, defect_id):
