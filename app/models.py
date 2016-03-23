@@ -69,7 +69,7 @@ class Stories(db.Model):
   def analyze(self):
     WellFormedAnalyzer.well_formed(self)
     Analyzer.atomic(self)
-    Analyzer.unique(self, True)
+    Analyzer.unique(self)
     MinimalAnalyzer.minimal(self)
     Analyzer.uniform(self)
     return self
@@ -189,10 +189,7 @@ class Defects(db.Model):
       db.session.merge(defect)
       db.session.commit()
       if project.create_comments == True:
-        try:
-          Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
-        except:
-          pass
+        Defects.send_comment(os.environ['FRONTEND_URL'], str(defect.id))
       return defect
 
   def send_comment(url, defect_id):
@@ -232,7 +229,7 @@ ERROR_KINDS = { 'well_formed_content': [
                   { 'subkind':'conjunctions', 'rule':"Analyzer.atomic_rule(getattr(story,chunk), chunk)", 'severity':'high', 'highlight':"Analyzer.highlight_text(story, CONJUNCTIONS, 'high')"}
                 ],
                 'unique': [
-                  { 'subkind':'identical', 'rule':"Analyzer.identical_rule(story, cascade)", 'severity':'high', 'highlight':'str("Remove all duplicate user stories")' }
+                  { 'subkind':'identical', 'rule':"Analyzer.identical_rule(story)", 'severity':'high', 'highlight':'str("Remove all duplicate user stories")' }
                 ],
                 'uniform': [
                   { 'subkind':'uniform', 'rule':"Analyzer.uniform_rule(story)", 'severity':'medium', 'highlight':'"Use the most common template: %s" % story.project.format'}
@@ -255,8 +252,8 @@ class Analyzer:
       Analyzer.generate_defects('atomic', story, chunk=chunk)
     return story
 
-  def unique(story, cascade):
-    Analyzer.generate_defects('unique', story, cascade=cascade)
+  def unique(story):
+    Analyzer.generate_defects('unique', story)
     return story
 
   def uniform(story):
@@ -325,15 +322,9 @@ class Analyzer:
     return result
     
 
-  def identical_rule(story, cascade):
+  def identical_rule(story):
     identical_stories = Stories.query.filter((Stories.title==story.title) & (Stories.project_id == int(story.project_id))).all()
     identical_stories.remove(story)
-    if cascade:
-      for story in identical_stories:
-        for defect in story.defects.filter(Defects.kind=='unique').all():
-          for comment in defect.comments.all(): comment.delete()
-          defect.delete()
-        Analyzer.unique(story, False)
     return (True if identical_stories else False)
 
   def highlight_text(story, word_array, severity):
