@@ -284,7 +284,8 @@ class Analyzer:
             if x in ['&', '+']: kontinue = Analyzer.symbol_in_role_exception(chunk, x)
             if kontinue:
               for role in re.split(x, chunk, flags=re.IGNORECASE):
-                sentences_invalid.append(Analyzer.well_formed_content_rule(role, "role", ["NP"]))
+                if role:
+                  sentences_invalid.append(Analyzer.well_formed_content_rule(role, "role", ["NP"]))
     return sentences_invalid.count(False) > 1
 
   def symbol_in_role_exception(chunk, conjunction):
