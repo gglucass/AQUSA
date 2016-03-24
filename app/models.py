@@ -277,7 +277,8 @@ class Analyzer:
         if x in chunk.lower():
           if kind == 'means':
             for means in re.split(x, chunk, flags=re.IGNORECASE):
-              sentences_invalid.append(Analyzer.well_formed_content_rule(means, 'means', ['MEANS']))
+              if means:
+                sentences_invalid.append(Analyzer.well_formed_content_rule(means, 'means', ['MEANS']))
           if kind == 'role':
             kontinue = True
             if x in ['&', '+']: kontinue = Analyzer.symbol_in_role_exception(chunk, x)
