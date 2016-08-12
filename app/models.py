@@ -132,7 +132,7 @@ class Projects(db.Model):
       except:
         print('')
     self.format = ', '.join(most_common_format)
-    if self.format == "": self.format = "As a, I'm able to, So that"
+    if self.format == "": self.format = "As a, I want to, So that"
     self.save() 
     return "New format is: " + self.format
 
@@ -535,10 +535,11 @@ class StoryChunker:
       role = StoryChunker.detect_indicator_phrase(story.title, 'role')
       text = StoryChunker.remove_special_characters(story.title)
       new_text = text.replace(role[1], '')
+
       sentence = Analyzer.content_chunk(new_text, 'role')
       NPs_after_role = StoryChunker.keep_if_NP(sentence)
       if NPs_after_role:
-        story.role = story.title[indicators['role']:(len(role[1]) + len(NPs_after_role))].strip()
+        story.role = story.title[indicators['role']:(len(role[1]) + 1 + len(NPs_after_role))].strip()
     if indicators['ends']: story.ends = story.title[indicators['ends']:None].strip()
     story.save()
     return story
