@@ -215,7 +215,7 @@ class Comments(db.Model):
 
 
 ROLE_INDICATORS = ["^As an ", "^As a ", "^As "]
-MEANS_INDICATORS = ["[, ]I'm able to ", "[, ]I am able to ", "[, ]I want to ", "[, ]I wish to ", "[, ]I can ", "[, ]I want "]
+MEANS_INDICATORS = ["[, ]I'm able to ", "[, ]I am able to ", "[, ]I want to ", "[, ]I wish to ", "[, ]I can ", "[, ]I want ", "[, ]I should be able to "]
 ENDS_INDICATORS = ["[, ]So that ", "[, ]In order to ", "[, ]So "]
 CONJUNCTIONS = [' and ', '&', '\+', ' or ', '>', '<', '/', '\\']
 PUNCTUATION = ['.', ';', ':', '‒', '–', '—', '―', '‐', '-', '?', '*']
