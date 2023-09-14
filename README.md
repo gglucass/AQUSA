@@ -1,6 +1,8 @@
 Automatic Quality User Story Artisan Prototype - Backend
 =======
-This is an implementation of the AQUSA tool described in http://bit.ly/aqusa-paper
+This is an archived implementation of the AQUSA tool described in http://bit.ly/aqusa-paper
+
+Visit https://github.com/RELabUU/aqusa-core for a more up to date version of the core of the AQUSA algorithm.
 
 ### Installation
   * Tested with Python 3.4
